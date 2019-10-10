@@ -97,11 +97,7 @@ final class ChatViewController: MessagesViewController {
       navigationController?.popViewController(animated: true)
       return
     }
-    
-//    messagesCollectionView.transform = CGAffineTransform(rotationAngle: -(CGFloat)(Double.pi));
-//    messagesCollectionView.scrollIndicatorInsets = UIEdgeInsets(top: 0.0, left: 0.0, bottom: 0.0, right: messagesCollectionView.bounds.size.width - 8.0)
 
-    print("id:\(id)")
     reference = db.collection(["channels", id, "thread"].joined(separator: "/"))
 
     messageListener = reference?.addSnapshotListener({ (querySnapshot, errot) in
@@ -143,39 +139,36 @@ final class ChatViewController: MessagesViewController {
     messageListener?.remove()
   }
   
-  func loadData (){
-    print("loadData")
-//    let first = (lastSnapshot == nil) ? reference?.order(by: "created", descending: true).limit(to: 20) :
-//    self.reference?.order(by: "created", descending: true).limit(to: 20).start(afterDocument: lastSnapshot!)
-//
-    let first = reference?.order(by: "created", descending: true).limit(to: loadDataNum)
-    first?.addSnapshotListener({ (snapshot, error) in
-        guard let snapshot = snapshot else {
-            return
-        }
-
-        snapshot.documentChanges.forEach { (change) in
-            self.handleDocumentChange(change,isNew: true)
-        }
-
-        guard let lastSnapshot = snapshot.documents.last else {
-             // The collection is empty.
-             return
-         }
-      
-        self.lastSnapshot = lastSnapshot
-      })
-  }
   
   // MARK: - Helpers
   @IBAction func moveToBottom(){
     self.messagesCollectionView.scrollToBottom()
   }
   
+  func loadData (){
+     let first = reference?.order(by: "created", descending: true).limit(to: loadDataNum)
+     first?.addSnapshotListener({ (snapshot, error) in
+         guard let snapshot = snapshot else {
+             return
+         }
+
+         snapshot.documentChanges.forEach { (change) in
+             self.handleDocumentChange(change)
+         }
+
+         guard let lastSnapshot = snapshot.documents.last else {
+              // The collection is empty.
+              return
+          }
+       
+         self.lastSnapshot = lastSnapshot
+       })
+   }
   
   private func loadPrevMessage() {
       guard let snapShot = self.lastSnapshot else { return }
 
+      print("snapshot2:\(snapShot)")
       let prev = self.reference?.order(by: "created", descending: true).limit(to: loadDataNum).start(afterDocument: snapShot)
       prev?.getDocuments(completion: { [weak self]( snapshot, error) in
         if let e = error{
@@ -184,13 +177,14 @@ final class ChatViewController: MessagesViewController {
         else{
           guard let sSelf = self else { return }
           sSelf.lastSnapshot = snapshot?.documents.last
+          print("snapshot1:\(sSelf.lastSnapshot)")
+
           guard let docs = snapshot?.documents else { return }
          
           var newMsgs = [Message]()
           for doc in docs {
             guard let msg = Message(document: doc) else { break }
             newMsgs.append(msg)
-            print("msg:\(msg)")
           }
           newMsgs.sort()
 
@@ -207,35 +201,24 @@ final class ChatViewController: MessagesViewController {
     })
   }
   
-  private func insertMessage(_ message: Message, isNew: Bool) {
+  private func insertMessage(_ message: Message) {
     guard !messages.contains(message) else {
       return
     }
-    print("insertNewMessage")
-
     messages.append(message)
     messages.sort()
     
     messagesCollectionView.reloadData()
-
-    if isNew{
-        let isLatestMessage = messages.index(of: message) == (messages.count - 1)
-          
-          print("messagesCollectionView.contentOffset.y:\(messagesCollectionView.contentOffset.y)")
-      //    if messagesCollectionView.contentOffset.y
-          
-      //    let shouldScrollToBottom = messagesCollectionView.isAtBottom && isLatestMessage
-              let shouldScrollToBottom = isLatestMessage
-
-      
+    
+    let isLatestMessage = messages.index(of: message) == (messages.count - 1)
+    let shouldScrollToBottom = messagesCollectionView.isAtBottom && isLatestMessage
+    
       if shouldScrollToBottom {
-        DispatchQueue.main.async {
-          print("scrollToBottom")
-
-          self.messagesCollectionView.scrollToBottom(animated: false)
-        }
+      DispatchQueue.main.async {
+        self.messagesCollectionView.scrollToBottom(animated: false)
       }
     }
+    
   }
   
   private func save(_ message: Message) {
@@ -456,7 +439,7 @@ extension ChatViewController: MessagesLayoutDelegate {
   }
   
   
-  private func handleDocumentChange(_ change: DocumentChange, isNew: Bool = true){
+  private func handleDocumentChange(_ change: DocumentChange){
       guard var message = Message(document: change.document) else{ return }
       
     if let url = message.downloadURL {
@@ -469,11 +452,10 @@ extension ChatViewController: MessagesLayoutDelegate {
           }
           
           message.image = image
-          sSelf.insertMessage(message,isNew: isNew)
+          sSelf.insertMessage(message)
         }
       } else {
-//        print("handleDocumentChange",isNew)
-        insertMessage(message, isNew: isNew)
+        insertMessage(message)
       }
     }
   }
