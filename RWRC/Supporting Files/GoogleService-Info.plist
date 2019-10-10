@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>562375411751-v27bpruf2hue6e608v3u00d2iv3s3bjf.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.562375411751-v27bpruf2hue6e608v3u00d2iv3s3bjf</string>
+	<key>API_KEY</key>
+	<string>AIzaSyB4ayBJjbGM6OutvOREd4q0eRe2UZAlyrM</string>
+	<key>GCM_SENDER_ID</key>
+	<string>562375411751</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.razeware.RWRC</string>
+	<key>PROJECT_ID</key>
+	<string>rwrc-1d06c</string>
+	<key>STORAGE_BUCKET</key>
+	<string>rwrc-1d06c.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:562375411751:ios:bd1210ffa0b16ced42e602</string>
+	<key>DATABASE_URL</key>
+	<string>https://rwrc-1d06c.firebaseio.com</string>
+</dict>
+</plist>
