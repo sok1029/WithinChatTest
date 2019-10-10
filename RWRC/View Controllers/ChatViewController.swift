@@ -46,13 +46,12 @@ final class ChatViewController: MessagesViewController {
   private let channel: Channel
   var isFirst = true
   var lastSnapshot: QueryDocumentSnapshot?
-  
-//  var loader = reference?.limit(to: 20)
-  
+  let loadDataNum: Int = 15
+  let topOffsetForLoading: CGFloat = -50
   
   private var moveToBottomButton: UIButton
   var fetching = false
-  var dragging = false
+  var scrollDecelerating = false
 
   private var isSendingPhoto = false {
     didSet {
@@ -138,9 +137,6 @@ final class ChatViewController: MessagesViewController {
     moveToBottomButton.isHidden = true
     moveToBottomButton.addTarget(self, action: #selector(moveToBottom), for: .touchUpInside)
     self.view.addSubview(moveToBottomButton)
-
-    self.automaticallyAdjustsScrollViewInsets = false
-    
   }
   
   deinit {
@@ -152,7 +148,7 @@ final class ChatViewController: MessagesViewController {
 //    let first = (lastSnapshot == nil) ? reference?.order(by: "created", descending: true).limit(to: 20) :
 //    self.reference?.order(by: "created", descending: true).limit(to: 20).start(afterDocument: lastSnapshot!)
 //
-    let first = reference?.order(by: "created", descending: true).limit(to: 20)
+    let first = reference?.order(by: "created", descending: true).limit(to: loadDataNum)
     first?.addSnapshotListener({ (snapshot, error) in
         guard let snapshot = snapshot else {
             return
@@ -180,7 +176,7 @@ final class ChatViewController: MessagesViewController {
   private func loadPrevMessage() {
       guard let snapShot = self.lastSnapshot else { return }
 
-      let prev = self.reference?.order(by: "created", descending: true).limit(to: 20).start(afterDocument: snapShot)
+      let prev = self.reference?.order(by: "created", descending: true).limit(to: loadDataNum).start(afterDocument: snapShot)
       prev?.getDocuments(completion: { [weak self]( snapshot, error) in
         if let e = error{
             print(e)
@@ -200,18 +196,13 @@ final class ChatViewController: MessagesViewController {
 
           sSelf.messages.insert(contentsOf: newMsgs, at: 0)
           sSelf.messagesCollectionView.reloadData()
-        
-//          DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: { [weak self] in
-//             let indexPath = IndexPath(row: 0, section: 30)
-//            sSelf.messagesCollectionView.scrollToItem(at: indexPath, at: .top, animated: true)
-//
-//          })
-          sSelf.messagesCollectionView.performBatchUpdates(nil) { _ in
-            let indexPath = IndexPath(row: 0, section: newMsgs.count - 1)
-            sSelf.messagesCollectionView.scrollToItem(at: indexPath, at: .top, animated: false)
-          }
-          self?.fetching = false
-
+          sSelf.messagesCollectionView.performBatchUpdates({
+            let moveSection =  newMsgs.count < sSelf.loadDataNum ? 0 : newMsgs.count - 2
+             let indexPath = IndexPath(row: 0, section: moveSection)
+             sSelf.messagesCollectionView.scrollToItem(at: indexPath, at: .top, animated: false)
+           }) { _ in
+             self?.fetching = false
+           }
         }
     })
   }
@@ -334,26 +325,24 @@ final class ChatViewController: MessagesViewController {
     let contentOffsetY = scrollView.contentOffset.y
     moveToBottomButton.isHidden = (contentHeight - contentOffsetY) > (boundsHeight * 2) ? false : true
     
-    if contentOffsetY < -50 && dragging{
+    if (contentOffsetY < topOffsetForLoading) && scrollDecelerating{
       if !fetching{
           fetchData()
       }
     }
-//    print("ofHeight:\(scrollView.contentSize.height)")
-//    print("ofY:\(scrollView.contentOffset.y)")
   }
-  func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-    print("dragging")
-    dragging = true
+  
+  func scrollViewWillBeginDecelerating(_ scrollView: UIScrollView) {
+     scrollDecelerating = true
   }
-
-  func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-    dragging = false
+  
+  func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+    scrollDecelerating = false
   }
   
   private func fetchData(){
       fetching = true
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: { [weak self] in
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.01, execute: { [weak self] in
         self?.loadPrevMessage()
       })
   }
@@ -490,7 +479,6 @@ extension ChatViewController: MessagesLayoutDelegate {
   }
 
 // MARK: - MessagesDisplayDelegate
-
 
 extension ChatViewController: MessagesDisplayDelegate {
   
