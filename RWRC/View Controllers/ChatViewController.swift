@@ -52,7 +52,8 @@ final class ChatViewController: MessagesViewController {
   
   private var moveToBottomButton: UIButton
   var fetching = false
-  
+  var dragging = false
+
   private var isSendingPhoto = false {
     didSet {
       DispatchQueue.main.async {
@@ -98,6 +99,10 @@ final class ChatViewController: MessagesViewController {
       return
     }
     
+//    messagesCollectionView.transform = CGAffineTransform(rotationAngle: -(CGFloat)(Double.pi));
+//    messagesCollectionView.scrollIndicatorInsets = UIEdgeInsets(top: 0.0, left: 0.0, bottom: 0.0, right: messagesCollectionView.bounds.size.width - 8.0)
+
+    print("id:\(id)")
     reference = db.collection(["channels", id, "thread"].joined(separator: "/"))
 
     messageListener = reference?.addSnapshotListener({ (querySnapshot, errot) in
@@ -133,6 +138,8 @@ final class ChatViewController: MessagesViewController {
     moveToBottomButton.isHidden = true
     moveToBottomButton.addTarget(self, action: #selector(moveToBottom), for: .touchUpInside)
     self.view.addSubview(moveToBottomButton)
+
+    self.automaticallyAdjustsScrollViewInsets = false
     
   }
   
@@ -141,22 +148,26 @@ final class ChatViewController: MessagesViewController {
   }
   
   func loadData (){
-        
-    let first = (lastSnapshot == nil) ? reference?.order(by: "created", descending: true).limit(to: 20) :
-      self.reference?.order(by: "created", descending: true).limit(to: 20).start(afterDocument: lastSnapshot!)
-  
+    print("loadData")
+//    let first = (lastSnapshot == nil) ? reference?.order(by: "created", descending: true).limit(to: 20) :
+//    self.reference?.order(by: "created", descending: true).limit(to: 20).start(afterDocument: lastSnapshot!)
+//
+    let first = reference?.order(by: "created", descending: true).limit(to: 20)
     first?.addSnapshotListener({ (snapshot, error) in
         guard let snapshot = snapshot else {
-            print("Error retreving cities: \(error.debugDescription)")
             return
         }
 
         snapshot.documentChanges.forEach { (change) in
-            self.handleDocumentChange(change)
+            self.handleDocumentChange(change,isNew: true)
         }
-      
-        self.lastSnapshot = snapshot.documents.last
 
+        guard let lastSnapshot = snapshot.documents.last else {
+             // The collection is empty.
+             return
+         }
+      
+        self.lastSnapshot = lastSnapshot
       })
   }
   
@@ -165,10 +176,47 @@ final class ChatViewController: MessagesViewController {
     self.messagesCollectionView.scrollToBottom()
   }
   
-  private func loadPrevMessage(_ message: Message) {
-    
+  
+  private func loadPrevMessage() {
+      guard let snapShot = self.lastSnapshot else { return }
+
+      let prev = self.reference?.order(by: "created", descending: true).limit(to: 20).start(afterDocument: snapShot)
+      prev?.getDocuments(completion: { [weak self]( snapshot, error) in
+        if let e = error{
+            print(e)
+        }
+        else{
+          guard let sSelf = self else { return }
+          sSelf.lastSnapshot = snapshot?.documents.last
+          guard let docs = snapshot?.documents else { return }
+         
+          var newMsgs = [Message]()
+          for doc in docs {
+            guard let msg = Message(document: doc) else { break }
+            newMsgs.append(msg)
+            print("msg:\(msg)")
+          }
+          newMsgs.sort()
+
+          sSelf.messages.insert(contentsOf: newMsgs, at: 0)
+          sSelf.messagesCollectionView.reloadData()
+        
+//          DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: { [weak self] in
+//             let indexPath = IndexPath(row: 0, section: 30)
+//            sSelf.messagesCollectionView.scrollToItem(at: indexPath, at: .top, animated: true)
+//
+//          })
+          sSelf.messagesCollectionView.performBatchUpdates(nil) { _ in
+            let indexPath = IndexPath(row: 0, section: newMsgs.count - 1)
+            sSelf.messagesCollectionView.scrollToItem(at: indexPath, at: .top, animated: false)
+          }
+          self?.fetching = false
+
+        }
+    })
   }
-  private func insertNewMessage(_ message: Message) {
+  
+  private func insertMessage(_ message: Message, isNew: Bool) {
     guard !messages.contains(message) else {
       return
     }
@@ -177,21 +225,24 @@ final class ChatViewController: MessagesViewController {
     messages.append(message)
     messages.sort()
     
-    let isLatestMessage = messages.index(of: message) == (messages.count - 1)
-    
-    print("messagesCollectionView.contentOffset.y:\(messagesCollectionView.contentOffset.y)")
-//    if messagesCollectionView.contentOffset.y
-    
-//    let shouldScrollToBottom = messagesCollectionView.isAtBottom && isLatestMessage
-        let shouldScrollToBottom = isLatestMessage
-
     messagesCollectionView.reloadData()
 
-    if shouldScrollToBottom {
-      DispatchQueue.main.async {
-        print("scrollToBottom")
+    if isNew{
+        let isLatestMessage = messages.index(of: message) == (messages.count - 1)
+          
+          print("messagesCollectionView.contentOffset.y:\(messagesCollectionView.contentOffset.y)")
+      //    if messagesCollectionView.contentOffset.y
+          
+      //    let shouldScrollToBottom = messagesCollectionView.isAtBottom && isLatestMessage
+              let shouldScrollToBottom = isLatestMessage
 
-        self.messagesCollectionView.scrollToBottom(animated: false)
+      
+      if shouldScrollToBottom {
+        DispatchQueue.main.async {
+          print("scrollToBottom")
+
+          self.messagesCollectionView.scrollToBottom(animated: false)
+        }
       }
     }
   }
@@ -283,35 +334,54 @@ final class ChatViewController: MessagesViewController {
     let contentOffsetY = scrollView.contentOffset.y
     moveToBottomButton.isHidden = (contentHeight - contentOffsetY) > (boundsHeight * 2) ? false : true
     
-    if contentOffsetY < 0{
+    if contentOffsetY < -50 && dragging{
       if !fetching{
           fetchData()
       }
     }
-    print("ofHeight:\(scrollView.contentSize.height)")
-    print("ofY:\(scrollView.contentOffset.y)")
+//    print("ofHeight:\(scrollView.contentSize.height)")
+//    print("ofY:\(scrollView.contentOffset.y)")
+  }
+  func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+    print("dragging")
+    dragging = true
+  }
+
+  func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+    dragging = false
   }
   
   private func fetchData(){
-    fetching = true
-      DispatchQueue.main.async {
-        self.fetching = false
-        self.loadData()
-//        guard let lastSnapshot = self.lastSnapshot else {
-//              // The collection is empty.
-//              return
-//          }
-//
-//        guard let id = self.channel.id else { return }
-//
-//          // Construct a new query starting after this document,
-//          // retrieving the next 25 cities.
-//        let next = self.db.collection(["channels", id, "thread"].joined(separator: "/"))
-//              .start(afterDocument: lastSnapshot)
-
-//        self.messagesCollectionView.reloadData()
-      }
+      fetching = true
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: { [weak self] in
+        self?.loadPrevMessage()
+      })
   }
+  
+  public override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+      
+      guard let messagesDataSource = messagesCollectionView.messagesDataSource else {
+          fatalError("Ouch. nil data source for messages")
+      }
+
+      // Very important to check this when overriding `cellForItemAt`
+      // Super method will handle returning the typing indicator cell
+//      guard !isSectionReservedForTypingIndicator(indexPath.section) else {
+//          return super.collectionView(collectionView, cellForItemAt: indexPath)
+//      }
+//
+//      let message = messagesDataSource.messageForItem(at: indexPath, in: messagesCollectionView)
+//      if case .custom = message.kind {
+//          let cell = messagesCollectionView.dequeueReusableCell(CustomCell.self, for: indexPath)
+//          cell.configure(with: message, at: indexPath, and: messagesCollectionView)
+//          return cell
+//      }
+      let cell = super.collectionView(collectionView, cellForItemAt: indexPath)
+//      cell.transform = CGAffineTransform(rotationAngle: CGFloat(Double.pi));
+    
+      return cell
+  }
+  
 }
 
 // MARK: - // MARK: - MessagesDisplayDelegate
@@ -335,12 +405,20 @@ extension ChatViewController: MessagesDataSource {
 
     return messages[indexPath.section]
   }
+  
+
+  func cellTopLabelAlignment(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> LabelAlignment {
+//      guard let dataSource = messagesCollectionView.messagesDataSource else { return nil }
+    
+      let edgeInset = UIEdgeInsets(top: 0, left: 5, bottom: 0, right: 0)
+      return isFromCurrentSender(message: message) ? .messageTrailing(.zero) : .messageLeading(edgeInset)
+  }
 
   // 4
   func cellTopLabelAttributedText(for message: MessageType,
     at indexPath: IndexPath) -> NSAttributedString? {
 
-    let name = message.sender.displayName
+    let name = isFromCurrentSender(message: message) ? "" : message.sender.displayName
     return NSAttributedString(
       string: name,
       attributes: [
@@ -357,11 +435,23 @@ extension ChatViewController: MessagesLayoutDelegate {
 
   func avatarSize(for message: MessageType, at indexPath: IndexPath,
     in messagesCollectionView: MessagesCollectionView) -> CGSize {
-
-    // 1
-    return CGSize(width: 25, height: 25)
+    
+    return isFromCurrentSender(message: message) ? .zero :  CGSize(width: 35, height: 35)
   }
-
+  
+//  func messagePadding(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> UIEdgeInsets {
+//
+//    if isFromCurrentSender(message: message) {
+//            return UIEdgeInsets(top: 0, left: 30, bottom: 0, right: 4)
+//        } else {
+//            return UIEdgeInsets(top: 0, left: 4, bottom: 0, right: 30)
+//        }
+//
+//  }
+  func avatarPosition(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> AvatarPosition {
+    return AvatarPosition(horizontal: .natural, vertical: .messageBottom)
+  }
+  
   func footerViewSize(for message: MessageType, at indexPath: IndexPath,
     in messagesCollectionView: MessagesCollectionView) -> CGSize {
 
@@ -376,7 +466,8 @@ extension ChatViewController: MessagesLayoutDelegate {
     return 0
   }
   
-  private func handleDocumentChange(_ change: DocumentChange){
+  
+  private func handleDocumentChange(_ change: DocumentChange, isNew: Bool = true){
       guard var message = Message(document: change.document) else{ return }
       
     if let url = message.downloadURL {
@@ -389,41 +480,24 @@ extension ChatViewController: MessagesLayoutDelegate {
           }
           
           message.image = image
-          sSelf.insertNewMessage(message)
+          sSelf.insertMessage(message,isNew: isNew)
         }
       } else {
-        print("handleDocumentChange")
-        insertNewMessage(message)
+//        print("handleDocumentChange",isNew)
+        insertMessage(message, isNew: isNew)
       }
     }
   }
-
-  private func handleDocumentChange(_ change: DocumentChange){
-    guard var message = Message(document: change.document) else{ return }
-    
-  if let url = message.downloadURL {
-      downloadImage(at: url) { [weak self] image in
-        guard let sSelf = self else {
-          return
-        }
-        guard let image = image else {
-          return
-        }
-        
-        message.image = image
-        sSelf.insertNewMessage(message)
-      }
-    } else {
-      print("handleDocumentChange")
-      insertNewMessage(message)
-    }
-  }
-}
 
 // MARK: - MessagesDisplayDelegate
 
 
 extension ChatViewController: MessagesDisplayDelegate {
+  
+  func configureAvatarView(_ avatarView: AvatarView, for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) {
+      avatarView.image = UIImage.init(named: "2")
+      
+  }
   func backgroundColor(for message: MessageType, at indexPath: IndexPath,
     in messagesCollectionView: MessagesCollectionView) -> UIColor {
     
@@ -501,6 +575,7 @@ extension ChatViewController: UIImagePickerControllerDelegate, UINavigationContr
     picker.dismiss(animated: true, completion: nil)
   }
 }
+
 
 
 
