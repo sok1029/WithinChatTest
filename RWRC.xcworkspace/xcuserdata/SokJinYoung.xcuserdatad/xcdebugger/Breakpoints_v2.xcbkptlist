@@ -7,32 +7,32 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "39C2F4D6-23B1-4910-B703-335137722F57"
+            uuid = "3FF892FA-751D-484B-AB9B-C9842474EDE0"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "RWRC/View Controllers/ChatViewController.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "449"
-            endingLineNumber = "449"
-            landmarkName = "heightForLocation(message:at:with:in:)"
+            startingLineNumber = "218"
+            endingLineNumber = "218"
+            landmarkName = "insertMessage(_:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "C6D1E27D-C798-4001-846B-DF71373DE780"
+            uuid = "BA29F4F5-75A2-4616-A8B6-8A6F05BA5AD7"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "RWRC/View Controllers/ChatViewController.swift"
+            filePath = "Pods/MessageKit/Sources/Views/MessagesCollectionView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "116"
-            endingLineNumber = "116"
-            landmarkName = "viewDidLoad()"
+            startingLineNumber = "85"
+            endingLineNumber = "85"
+            landmarkName = "scrollToBottom(animated:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

@@ -31,8 +31,8 @@ import Firebase
 import MessageKit
 import FirebaseFirestore
 import Photos
+import WXImageCompress
 
-  
   
 final class ChatViewController: MessagesViewController {
   
@@ -44,7 +44,9 @@ final class ChatViewController: MessagesViewController {
   
   private let user: User
   private let channel: Channel
-  var isFirst = true
+  private let mediaWidth: CGFloat = UIScreen.main.bounds.size.width * 2.0 / 3.0
+  
+  var isFirstLoad = true
   var lastDocSnapshot: QueryDocumentSnapshot?
   let loadDataNum: Int = 15
   let topOffsetForLoading: CGFloat = -50
@@ -143,17 +145,17 @@ final class ChatViewController: MessagesViewController {
         guard let sSelf = self else { return }
         guard let snapshot = snapshot else { return }
 
-        if snapshot.documentChanges.count > 0{
-            snapshot.documentChanges.forEach { (change) in
-              sSelf.handleDocumentChange(change)
-          }
+        snapshot.documentChanges.forEach { (change) in
+          sSelf.handleDocumentChange(change)
         }
         
-      if sSelf.lastDocSnapshot == nil{
+        if sSelf.lastDocSnapshot == nil{
           guard let lastSnapshot = snapshot.documents.last else { return }
           sSelf.lastDocSnapshot = lastSnapshot
           sSelf.loadPrevMessage()
         }
+        
+        sSelf.isFirstLoad = false
       })
    }
   
@@ -201,9 +203,9 @@ final class ChatViewController: MessagesViewController {
   }
   
   private func insertMessage(_ message: Message) {
-    guard !messages.contains(message) else {
-      return
-    }
+//    guard !messages.contains(message) else {
+//      return
+//    }
     messages.append(message)
     messages.sort()
     
@@ -212,12 +214,9 @@ final class ChatViewController: MessagesViewController {
     let isLatestMessage = messages.index(of: message) == (messages.count - 1)
     let shouldScrollToBottom = messagesCollectionView.isAtBottom && isLatestMessage
     
-      if shouldScrollToBottom {
-      DispatchQueue.main.async {
-        self.messagesCollectionView.scrollToBottom(animated: false)
-      }
+    if shouldScrollToBottom {
+      self.messagesCollectionView.scrollToBottom(animated: false)
     }
-    
   }
   
   private func save(_ message: Message) {
@@ -226,8 +225,6 @@ final class ChatViewController: MessagesViewController {
         print("Error sending message: \(e.localizedDescription)")
         return
       }
-      
-      self.messagesCollectionView.scrollToBottom()
     }
   }
   
@@ -253,23 +250,24 @@ final class ChatViewController: MessagesViewController {
   }
   
   private func sendPhoto(_ image: UIImage) {
+    let thumbImg = image.wxCompress()
+    preApplyPhoto(thumbImg)
     isSendingPhoto = true
     
     uploadImage(image, to: channel) { [weak self] url in
-      guard let `self` = self else {
+      guard let sSelf = self else {
         return
       }
-      self.isSendingPhoto = false
+      sSelf.isSendingPhoto = false
       
       guard let url = url else {
         return
       }
       
-      var message = Message(user: self.user, image: image)
+      var message = Message(user: sSelf.user, image: thumbImg)
       message.downloadURL = url
-      
-      self.save(message)
-      self.messagesCollectionView.scrollToBottom()
+//      sSelf.messagesCollectionView.scrollToBottom(animated: false)
+      sSelf.save(message)
     }
   }
 
@@ -404,6 +402,21 @@ extension ChatViewController: MessagesDataSource {
 
 extension ChatViewController: MessagesLayoutDelegate {
 
+  func widthForMedia(message: MessageType, at indexPath: IndexPath, with maxWidth: CGFloat, in messagesCollectionView: MessagesCollectionView) -> CGFloat {
+      return mediaWidth
+  }
+  
+  func heightForMedia(message: MessageType, at indexPath: IndexPath, with maxWidth: CGFloat, in messagesCollectionView: MessagesCollectionView) -> CGFloat {
+       switch message.data {
+       case .photo(let image), .video(_, let image):
+        let boundingRect = CGRect(origin: .zero, size: CGSize(width: mediaWidth, height: .greatestFiniteMagnitude))
+           return AVMakeRect(aspectRatio: image.size, insideRect: boundingRect).height
+       default:
+           return 0
+       }
+   }
+  
+  
   func avatarSize(for message: MessageType, at indexPath: IndexPath,
     in messagesCollectionView: MessagesCollectionView) -> CGSize {
     
@@ -437,10 +450,16 @@ extension ChatViewController: MessagesLayoutDelegate {
     return 0
   }
   
+  private func preApplyPhoto(_ image: UIImage){
+    let message = Message(user: user, image: image)
+    insertMessage(message)
+    messagesCollectionView.scrollToBottom(animated: false)
+  }
   
   private func handleDocumentChange(_ change: DocumentChange){
-      guard var message = Message(document: change.document) else{ return }
-      
+    guard var message = Message(document: change.document) else{ return }
+    if !isFirstLoad && isFromCurrentSender(message: message) { return }
+    
     if let url = message.downloadURL {
         downloadImage(at: url) { [weak self] image in
           guard let sSelf = self else {
@@ -502,8 +521,9 @@ extension ChatViewController: MessageInputBarDelegate {
     let message = Message(user: user, content: text)
 
     // 2
+    insertMessage(message)
+    self.messagesCollectionView.scrollToBottom(animated: false)
     save(message)
-
     // 3
     inputBar.inputTextView.text = ""
   }
@@ -546,6 +566,22 @@ extension ChatViewController: UIImagePickerControllerDelegate, UINavigationContr
 }
 
 
+//extension UIImage {
+//    enum JPEGQuality: CGFloat {
+//        case lowest  = 0
+//        case low     = 0.25
+//        case medium  = 0.5
+//        case high    = 0.75
+//        case highest = 1
+//    }
+//
+//    /// Returns the data for the specified image in JPEG format.
+//    /// If the image object’s underlying image data has been purged, calling this function forces that data to be reloaded into memory.
+//    /// - returns: A data object containing the JPEG data, or nil if there was a problem generating the data. This function may return nil if the image has no data or if the underlying CGImageRef contains data in an unsupported bitmap format.
+//    func jpeg(_ jpegQuality: JPEGQuality) -> Data? {
+//        return jpegData(compressionQuality: jpegQuality.rawValue)
+//    }
+//}
 
 
 

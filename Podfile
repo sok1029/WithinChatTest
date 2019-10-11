@@ -9,6 +9,7 @@ target 'RWRC' do
   pod 'Firebase/Storage'
   pod 'Firebase/Firestore'
   pod 'Firebase/Analytics'
+  pod 'WXImageCompress', '~> 0.1.1'
 
   post_install do |installer|
       installer.pods_project.targets.each do |target|
