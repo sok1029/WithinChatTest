@@ -45,7 +45,7 @@ final class ChatViewController: MessagesViewController {
   private let user: User
   private let channel: Channel
   var isFirst = true
-  var lastSnapshot: QueryDocumentSnapshot?
+  var lastDocSnapshot: QueryDocumentSnapshot?
   let loadDataNum: Int = 15
   let topOffsetForLoading: CGFloat = -50
   
@@ -53,6 +53,8 @@ final class ChatViewController: MessagesViewController {
   var fetching = false
   var scrollDecelerating = false
 
+  var runLoadPrevMessage: (() -> ())?
+  
   private var isSendingPhoto = false {
     didSet {
       DispatchQueue.main.async {
@@ -100,17 +102,7 @@ final class ChatViewController: MessagesViewController {
 
     reference = db.collection(["channels", id, "thread"].joined(separator: "/"))
 
-    messageListener = reference?.addSnapshotListener({ (querySnapshot, errot) in
-      guard let snapshot = querySnapshot else{ return }
-
-      snapshot.documentChanges.forEach { (change) in
-        if !(self.isFirst){ //only for new message
-            self.handleDocumentChange(change)
-        }
-      }
-      self.isFirst = false
-    })
-    loadData()
+    initDocuments()
     
     let cameraItem = InputBarButtonItem(type: .system)
     cameraItem.tintColor = .primary
@@ -145,58 +137,65 @@ final class ChatViewController: MessagesViewController {
     self.messagesCollectionView.scrollToBottom()
   }
   
-  func loadData (){
+  func initDocuments (){
      let first = reference?.order(by: "created", descending: true).limit(to: loadDataNum)
-     first?.addSnapshotListener({ (snapshot, error) in
-         guard let snapshot = snapshot else {
-             return
-         }
+     messageListener = first?.addSnapshotListener({ [weak self] (snapshot, error) in
+        guard let sSelf = self else { return }
+        guard let snapshot = snapshot else { return }
 
-         snapshot.documentChanges.forEach { (change) in
-             self.handleDocumentChange(change)
-         }
-
-         guard let lastSnapshot = snapshot.documents.last else {
-              // The collection is empty.
-              return
+        if snapshot.documentChanges.count > 0{
+            snapshot.documentChanges.forEach { (change) in
+              sSelf.handleDocumentChange(change)
           }
-       
-         self.lastSnapshot = lastSnapshot
-       })
+        }
+        
+      if sSelf.lastDocSnapshot == nil{
+          guard let lastSnapshot = snapshot.documents.last else { return }
+          sSelf.lastDocSnapshot = lastSnapshot
+          sSelf.loadPrevMessage()
+        }
+      })
    }
   
   private func loadPrevMessage() {
-      guard let snapShot = self.lastSnapshot else { return }
+      guard let snapShot = self.lastDocSnapshot else { return }
 
-      print("snapshot2:\(snapShot)")
       let prev = self.reference?.order(by: "created", descending: true).limit(to: loadDataNum).start(afterDocument: snapShot)
       prev?.getDocuments(completion: { [weak self]( snapshot, error) in
+        guard let sSelf = self else { return }
+        
+        if let run = sSelf.runLoadPrevMessage{
+           run()
+           sSelf.runLoadPrevMessage = nil
+        }
+
         if let e = error{
             print(e)
         }
         else{
-          guard let sSelf = self else { return }
-          sSelf.lastSnapshot = snapshot?.documents.last
-          print("snapshot1:\(sSelf.lastSnapshot)")
-
-          guard let docs = snapshot?.documents else { return }
+          guard let lastDocSnapShot = snapshot?.documents.last else { return }
+          sSelf.lastDocSnapshot = lastDocSnapShot
+          guard let docs = snapshot?.documents else { return  }
          
-          var newMsgs = [Message]()
-          for doc in docs {
-            guard let msg = Message(document: doc) else { break }
-            newMsgs.append(msg)
-          }
-          newMsgs.sort()
+          func loadPrevMessage(){
+            var newMsgs = [Message]()
+            for doc in docs {
+              guard let msg = Message(document: doc) else { break }
+              newMsgs.append(msg)
+            }
+            newMsgs.sort()
 
-          sSelf.messages.insert(contentsOf: newMsgs, at: 0)
-          sSelf.messagesCollectionView.reloadData()
-          sSelf.messagesCollectionView.performBatchUpdates({
-            let moveSection =  newMsgs.count < sSelf.loadDataNum ? 0 : newMsgs.count - 2
-             let indexPath = IndexPath(row: 0, section: moveSection)
-             sSelf.messagesCollectionView.scrollToItem(at: indexPath, at: .top, animated: false)
-           }) { _ in
-             self?.fetching = false
-           }
+            sSelf.messages.insert(contentsOf: newMsgs, at: 0)
+            sSelf.messagesCollectionView.reloadData()
+            sSelf.messagesCollectionView.performBatchUpdates({
+              let moveSection =  newMsgs.count > 0 ? (newMsgs.count - 2) : 0
+               let indexPath = IndexPath(row: 0, section: moveSection)
+               sSelf.messagesCollectionView.scrollToItem(at: indexPath, at: .top, animated: false)
+             }) { _ in
+               sSelf.fetching = false
+             }
+          }
+          sSelf.runLoadPrevMessage = loadPrevMessage
         }
     })
   }
@@ -325,7 +324,7 @@ final class ChatViewController: MessagesViewController {
   
   private func fetchData(){
       fetching = true
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.01, execute: { [weak self] in
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.0001, execute: { [weak self] in
         self?.loadPrevMessage()
       })
   }
