@@ -70,7 +70,7 @@ final class AppController {
   }
   
   private func handleAppState() {
-    if let user = Auth.auth().currentUser {
+    if let user = Auth.auth().currentUser , AppSettings.displayName != nil {
       let vc = ChannelsViewController(currentUser: user)
       rootViewController = NavigationController(vc)
     } else {

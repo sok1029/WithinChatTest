@@ -263,7 +263,7 @@ final class ChatViewController: MessagesViewController {
       
       var message = Message(user: sSelf.user, image: thumbImg)
       message.downloadURL = url
-//      sSelf.messagesCollectionView.scrollToBottom(animated: false)
+      UIImage.storeImage(urlString: url.absoluteString, img: image)
       sSelf.save(message)
     }
   }
@@ -354,7 +354,6 @@ final class ChatViewController: MessagesViewController {
 
 
 extension ChatViewController: MessagesDataSource {
-
   // 1
   func currentSender() -> Sender {
     return Sender(id: user.uid, displayName: AppSettings.displayName)
@@ -455,23 +454,32 @@ extension ChatViewController: MessagesLayoutDelegate {
     }
   }
   
+  
   private func handleDocumentChange(_ change: DocumentChange){
     guard var message = Message(document: change.document) else{ return }
     if !isFirstLoad && isFromCurrentSender(message: message) { return }
     
     if let url = message.downloadURL {
+      if let img = UIImage.loadImage(urlString: url.absoluteString){
+        message.image = img
+        insertMessage(message)
+      }
+      else{
         downloadImage(at: url) { [weak self] image in
           guard let sSelf = self else { return }
           guard let image = image else { return }
           
+          UIImage.storeImage(urlString: url.absoluteString, img: image)
           message.image = image
           sSelf.insertMessage(message)
         }
-      } else {
-        insertMessage(message)
       }
     }
+    else {
+      insertMessage(message)
+    }
   }
+}
 
 // MARK: - MessagesDisplayDelegate
 
