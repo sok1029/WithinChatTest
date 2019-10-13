@@ -152,11 +152,10 @@ final class ChatViewController: MessagesViewController {
         sSelf.isFirstLoad = false
 
         if sSelf.lastDocSnapshot == nil{
-          guard let lastSnapshot = snapshot.documents.last else { return }
-          sSelf.lastDocSnapshot = lastSnapshot
-          sSelf.loadPrevData()
+            guard let lastSnapshot = snapshot.documents.last else { return }
+            sSelf.lastDocSnapshot = lastSnapshot
+            sSelf.loadPrevData()
         }
-        
       })
    }
   
@@ -215,7 +214,9 @@ final class ChatViewController: MessagesViewController {
     let shouldScrollToBottom = messagesCollectionView.isAtBottom && isLatestMessage
     
     if shouldScrollToBottom {
-      self.messagesCollectionView.scrollToBottom(animated: false)
+        DispatchQueue.main.async {
+          self.messagesCollectionView.scrollToBottom(animated: false)
+        }
     }
   }
   
@@ -318,8 +319,8 @@ final class ChatViewController: MessagesViewController {
   
   private func fetchData(){
       fetching = true
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.0001, execute: { [weak self] in
-        self?.loadPrevData()
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.0001, execute: { [weak self] in
+          self?.loadPrevData()
       })
   }
   
@@ -449,7 +450,9 @@ extension ChatViewController: MessagesLayoutDelegate {
   private func preApplyPhoto(_ image: UIImage){
     let message = Message(user: user, image: image)
     insertMessage(message)
-    messagesCollectionView.scrollToBottom(animated: false)
+    DispatchQueue.main.async {
+      self.messagesCollectionView.scrollToBottom(animated: false)
+    }
   }
   
   private func handleDocumentChange(_ change: DocumentChange){
@@ -514,7 +517,9 @@ extension ChatViewController: MessageInputBarDelegate {
 
     // 2
     insertMessage(message)
-    self.messagesCollectionView.scrollToBottom(animated: false)
+    DispatchQueue.main.async {
+      self.messagesCollectionView.scrollToBottom(animated: false)
+    }
     save(message)
     // 3
     inputBar.inputTextView.text = ""
