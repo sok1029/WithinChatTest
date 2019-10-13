@@ -149,17 +149,18 @@ final class ChatViewController: MessagesViewController {
           sSelf.handleDocumentChange(change)
         }
         
+        sSelf.isFirstLoad = false
+
         if sSelf.lastDocSnapshot == nil{
           guard let lastSnapshot = snapshot.documents.last else { return }
           sSelf.lastDocSnapshot = lastSnapshot
-          sSelf.loadPrevMessage()
+          sSelf.loadPrevData()
         }
         
-        sSelf.isFirstLoad = false
       })
    }
   
-  private func loadPrevMessage() {
+  private func loadPrevData() {
       guard let snapShot = self.lastDocSnapshot else { return }
 
       let prev = self.reference?.order(by: "created", descending: true).limit(to: loadDataNum).start(afterDocument: snapShot)
@@ -208,7 +209,6 @@ final class ChatViewController: MessagesViewController {
 //    }
     messages.append(message)
     messages.sort()
-    
     messagesCollectionView.reloadData()
     
     let isLatestMessage = messages.index(of: message) == (messages.count - 1)
@@ -234,8 +234,8 @@ final class ChatViewController: MessagesViewController {
       return
     }
     
-    guard let scaledImage = image.scaledToSafeUploadSize,
-      let data = scaledImage.jpegData(compressionQuality: 0.4) else {
+//    guard let scaledImage = image.scaledToSafeUploadSize,
+    guard let data = image.jpegData(compressionQuality: 1.0) else {
       completion(nil)
       return
     }
@@ -254,15 +254,11 @@ final class ChatViewController: MessagesViewController {
     preApplyPhoto(thumbImg)
     isSendingPhoto = true
     
-    uploadImage(image, to: channel) { [weak self] url in
-      guard let sSelf = self else {
-        return
-      }
+    uploadImage(thumbImg, to: channel) { [weak self] url in
+      guard let sSelf = self else { return }
       sSelf.isSendingPhoto = false
       
-      guard let url = url else {
-        return
-      }
+      guard let url = url else { return }
       
       var message = Message(user: sSelf.user, image: thumbImg)
       message.downloadURL = url
@@ -323,7 +319,7 @@ final class ChatViewController: MessagesViewController {
   private func fetchData(){
       fetching = true
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.0001, execute: { [weak self] in
-        self?.loadPrevMessage()
+        self?.loadPrevData()
       })
   }
   
@@ -462,12 +458,8 @@ extension ChatViewController: MessagesLayoutDelegate {
     
     if let url = message.downloadURL {
         downloadImage(at: url) { [weak self] image in
-          guard let sSelf = self else {
-            return
-          }
-          guard let image = image else {
-            return
-          }
+          guard let sSelf = self else { return }
+          guard let image = image else { return }
           
           message.image = image
           sSelf.insertMessage(message)
