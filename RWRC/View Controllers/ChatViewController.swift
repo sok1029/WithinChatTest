@@ -336,13 +336,18 @@ final class ChatViewController: MessagesViewController {
 //          return super.collectionView(collectionView, cellForItemAt: indexPath)
 //      }
 //
-//      let message = messagesDataSource.messageForItem(at: indexPath, in: messagesCollectionView)
+      let message = messagesDataSource.messageForItem(at: indexPath, in: messagesCollectionView)
+    
+    
 //      if case .custom = message.kind {
 //          let cell = messagesCollectionView.dequeueReusableCell(CustomCell.self, for: indexPath)
 //          cell.configure(with: message, at: indexPath, and: messagesCollectionView)
 //          return cell
 //      }
-      let cell = super.collectionView(collectionView, cellForItemAt: indexPath)
+      let cell = super.collectionView(collectionView, cellForItemAt: indexPath) as! MessageCollectionViewCell
+      
+//      cell.messageContainerView.image  = UIImage.init(named: "2")
+    
 //      cell.transform = CGAffineTransform(rotationAngle: CGFloat(Double.pi));
     
       return cell
@@ -460,33 +465,30 @@ extension ChatViewController: MessagesLayoutDelegate {
     if !isFirstLoad && isFromCurrentSender(message: message) { return }
     
     if let url = message.downloadURL {
+      //from cache
       if let img = UIImage.loadImage(urlString: url.absoluteString){
         message.image = img
         insertMessage(message)
       }
-      else{
+      else{ //from server
         //insert first dummy Image
         let img = UIImage.init(color: .gray, size: message.imageSize!)
         message.image = img
-        
         insertMessage(message)
-
+        //insert server image
         downloadImage(at: url) { [weak self] image in
           guard let sSelf = self else { return }
           guard let image = image else { return }
-       
-          message.image = image
-//          for i in 0..<sSelf.messages.count{
-//            if sSelf.messages[i].messageId == message.id{
-//              sSelf.messages[i] = message
-//              break
-//            }
-//          }
-          DispatchQueue.main.async {
-            sSelf.messagesCollectionView.reloadData()
+
+          DispatchQueue.global().async {
+            if let index = sSelf.messages.index(of: message){
+                sSelf.messages[index].image = image
+                DispatchQueue.main.async {
+                    sSelf.messagesCollectionView.reloadData()
+                }
+                UIImage.storeImage(urlString: url.absoluteString, img: image)
+            }
           }
-          
-          UIImage.storeImage(urlString: url.absoluteString, img: image)
         }
       }
     }
