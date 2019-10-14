@@ -65,6 +65,7 @@ struct Message: MessageType {
     self.image = image
     content = ""
     sentDate = Date()
+    imageSize = image.size
     id = nil
   }
   
@@ -90,9 +91,7 @@ struct Message: MessageType {
     } else {
       return nil
     }
-    
   }
-  
 }
 
 extension Message: DatabaseRepresentation {

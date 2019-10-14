@@ -145,19 +145,74 @@ final class ChatViewController: MessagesViewController {
         guard let sSelf = self else { return }
         guard let snapshot = snapshot else { return }
 
-        snapshot.documentChanges.forEach { (change) in
-          sSelf.handleDocumentChange(change)
-        }
-        
-        sSelf.isFirstLoad = false
-
-        if sSelf.lastDocSnapshot == nil{
+        if sSelf.isFirstLoad{
+            sSelf.loadFirstData(snapshot)
             guard let lastSnapshot = snapshot.documents.last else { return }
             sSelf.lastDocSnapshot = lastSnapshot
             sSelf.loadPrevData()
         }
+        else{
+          snapshot.documentChanges.forEach { (change) in
+            sSelf.handleDocumentChange(change)
+          }
+        }
       })
    }
+  
+  private func loadFirstData(_ snapshot: QuerySnapshot){
+    snapshot.documentChanges.forEach { (change) in
+      guard var message = Message(document: change.document) else{ return }
+      if let url = message.downloadURL{
+        if let img = UIImage.loadImage(urlString: url.absoluteString){
+          message.image = img
+        }
+        else{//dummy
+          let img = UIImage.init(color: .gray, size: message.imageSize!)
+          message.image = img
+        }
+      }
+      messages.append(message)
+    }
+    
+    isFirstLoad = false
+    
+//    DispatchQueue.main.async {[weak self] in
+//      guard let sSelf = self else { return }
+    messages.sort()
+    messagesCollectionView.reloadData()
+    messagesCollectionView.scrollToBottom()
+//    }
+  }
+
+  
+  private func handleDocumentChange(_ change: DocumentChange){
+    guard var message = Message(document: change.document) else{ return }
+    if isFromCurrentSender(message: message) { return }
+    
+    if let url = message.downloadURL {
+      //from cache
+      if let img = UIImage.loadImage(urlString: url.absoluteString){
+        message.image = img
+        insertMessage(message)
+      }
+      else{ //from server
+        //insert server image
+        downloadImage(at: url) { [weak self] image in
+          guard let sSelf = self else { return }
+          guard let image = image else { return }
+
+          message.image = image
+          sSelf.insertMessage(message)
+          DispatchQueue.global().async {
+              UIImage.storeImage(urlString: url.absoluteString, img: image)
+          }
+        }
+      }
+    }
+    else {
+      insertMessage(message)
+    }
+  }
   
   private func loadPrevData() {
       guard let snapShot = self.lastDocSnapshot else { return }
@@ -207,8 +262,11 @@ final class ChatViewController: MessagesViewController {
 //      return
 //    }
     messages.append(message)
-    messages.sort()
-    messagesCollectionView.reloadData()
+//    DispatchQueue.main.async { [weak self] in
+//      guard let sSelf = self else { return }
+      messages.sort()
+      messagesCollectionView.reloadData()
+//    }
     
     let isLatestMessage = messages.index(of: message) == (messages.count - 1)
     let shouldScrollToBottom = messagesCollectionView.isAtBottom && isLatestMessage
@@ -326,30 +384,51 @@ final class ChatViewController: MessagesViewController {
   
   public override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
       
-      guard let messagesDataSource = messagesCollectionView.messagesDataSource else {
-          fatalError("Ouch. nil data source for messages")
-      }
-
-      // Very important to check this when overriding `cellForItemAt`
-      // Super method will handle returning the typing indicator cell
-//      guard !isSectionReservedForTypingIndicator(indexPath.section) else {
-//          return super.collectionView(collectionView, cellForItemAt: indexPath)
+//      guard let messagesDataSource = messagesCollectionView.messagesDataSource else {
+//          fatalError("Ouch. nil data source for messages")
 //      }
 //
-      let message = messagesDataSource.messageForItem(at: indexPath, in: messagesCollectionView)
+//      // Very important to check this when overriding `cellForItemAt`
+//      // Super method will handle returning the typing indicator cell
+////      guard !isSectionReservedForTypingIndicator(indexPath.section) else {
+////          return super.collectionView(collectionView, cellForItemAt: indexPath)
+////      }
+////
+//      let message = messagesDataSource.messageForItem(at: indexPath, in: messagesCollectionView)
+
     
-    
-//      if case .custom = message.kind {
-//          let cell = messagesCollectionView.dequeueReusableCell(CustomCell.self, for: indexPath)
-//          cell.configure(with: message, at: indexPath, and: messagesCollectionView)
-//          return cell
-//      }
-      let cell = super.collectionView(collectionView, cellForItemAt: indexPath) as! MessageCollectionViewCell
-      
-//      cell.messageContainerView.image  = UIImage.init(named: "2")
-    
-//      cell.transform = CGAffineTransform(rotationAngle: CGFloat(Double.pi));
-    
+    let cell = super.collectionView(collectionView, cellForItemAt: indexPath) as! MessageCollectionViewCell
+    let message = messages[indexPath.section]
+
+    if let url = message.downloadURL {
+        //from cache
+        if let img = UIImage.loadImage(urlString: url.absoluteString){
+          cell.messageContainerView.image = img
+        }
+        else{ //from server
+          //insert first dummy Image
+          let img = UIImage.init(color: .gray, size: message.imageSize!)
+          //insert server image
+          cell.messageContainerView.image = img
+
+          downloadImage(at: url) { [weak self] image in
+            guard let sSelf = self else { return }
+            guard let image = image else { return }
+
+//            DispatchQueue.global().async {
+            DispatchQueue.global().async {
+              UIImage.storeImage(urlString: url.absoluteString, img: image)
+            }
+            if let index = sSelf.messages.index(of: message){
+              sSelf.messages[index].image = image
+              DispatchQueue.main.async{
+                cell.messageContainerView.image = img
+                sSelf.messagesCollectionView.reloadData()
+              }
+            }
+          }
+        }
+    }
       return cell
   }
   
@@ -456,44 +535,6 @@ extension ChatViewController: MessagesLayoutDelegate {
     insertMessage(message)
     DispatchQueue.main.async {
       self.messagesCollectionView.scrollToBottom(animated: false)
-    }
-  }
-  
-  
-  private func handleDocumentChange(_ change: DocumentChange){
-    guard var message = Message(document: change.document) else{ return }
-    if !isFirstLoad && isFromCurrentSender(message: message) { return }
-    
-    if let url = message.downloadURL {
-      //from cache
-      if let img = UIImage.loadImage(urlString: url.absoluteString){
-        message.image = img
-        insertMessage(message)
-      }
-      else{ //from server
-        //insert first dummy Image
-        let img = UIImage.init(color: .gray, size: message.imageSize!)
-        message.image = img
-        insertMessage(message)
-        //insert server image
-        downloadImage(at: url) { [weak self] image in
-          guard let sSelf = self else { return }
-          guard let image = image else { return }
-
-          DispatchQueue.global().async {
-            if let index = sSelf.messages.index(of: message){
-                sSelf.messages[index].image = image
-                DispatchQueue.main.async {
-                    sSelf.messagesCollectionView.reloadData()
-                }
-                UIImage.storeImage(urlString: url.absoluteString, img: image)
-            }
-          }
-        }
-      }
-    }
-    else {
-      insertMessage(message)
     }
   }
 }

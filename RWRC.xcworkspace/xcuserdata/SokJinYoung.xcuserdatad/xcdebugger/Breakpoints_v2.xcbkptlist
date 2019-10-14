@@ -7,15 +7,15 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "E2CDF73A-5882-449B-BBDA-52BD947CDC5A"
-            shouldBeEnabled = "Yes"
+            uuid = "F5E086B3-37B8-42A5-A5C5-647217ED9BBA"
+            shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "RWRC/View Controllers/ChatViewController.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "329"
-            endingLineNumber = "329"
+            startingLineNumber = "416"
+            endingLineNumber = "416"
             landmarkName = "collectionView(_:cellForItemAt:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -23,64 +23,81 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "1BBCDEB3-7418-4443-B1D9-E9E47873ACD8"
+            uuid = "2ECB3C91-F17D-4A15-8722-AC1626B6A28A"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "RWRC/View Controllers/ChatViewController.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "412"
-            endingLineNumber = "412"
-            landmarkName = "heightForMedia(message:at:with:in:)"
+            startingLineNumber = "423"
+            endingLineNumber = "423"
+            landmarkName = "collectionView(_:cellForItemAt:)"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "1BBCDEB3-7418-4443-B1D9-E9E47873ACD8 - c85932ecfa3b2802"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "RWRC.ChatViewController.heightForMedia(message: MessageKit.MessageType, at: Foundation.IndexPath, with: CoreGraphics.CGFloat, in: MessageKit.MessagesCollectionView) -&gt; CoreGraphics.CGFloat"
-                  moduleName = "RWRC"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/SokJinYoung/Desktop/chatTest/RWRC/View%20Controllers/ChatViewController.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "412"
-                  endingLineNumber = "412"
-                  offsetFromSymbolStart = "392">
-               </Location>
-               <Location
-                  uuid = "1BBCDEB3-7418-4443-B1D9-E9E47873ACD8 - c85932ecfa3b2802"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "RWRC.ChatViewController.heightForMedia(message: MessageKit.MessageType, at: Foundation.IndexPath, with: CoreGraphics.CGFloat, in: MessageKit.MessagesCollectionView) -&gt; CoreGraphics.CGFloat"
-                  moduleName = "RWRC"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/SokJinYoung/Desktop/chatTest/RWRC/View%20Controllers/ChatViewController.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "412"
-                  endingLineNumber = "412"
-                  offsetFromSymbolStart = "512">
-               </Location>
-               <Location
-                  uuid = "1BBCDEB3-7418-4443-B1D9-E9E47873ACD8 - c85932ecfa3b2802"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "RWRC.ChatViewController.heightForMedia(message: MessageKit.MessageType, at: Foundation.IndexPath, with: CoreGraphics.CGFloat, in: MessageKit.MessagesCollectionView) -&gt; CoreGraphics.CGFloat"
-                  moduleName = "RWRC"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/SokJinYoung/Desktop/chatTest/RWRC/View%20Controllers/ChatViewController.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "412"
-                  endingLineNumber = "412"
-                  offsetFromSymbolStart = "704">
-               </Location>
-            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "BFB7D8EA-90BA-4AD4-A4F6-6037F79C6B84"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "RWRC/View Controllers/ChatViewController.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "425"
+            endingLineNumber = "425"
+            landmarkName = "collectionView(_:cellForItemAt:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "6A49A802-801C-4E5F-8F1A-2EE8AFA6E840"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "RWRC/Models/Message.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "76"
+            endingLineNumber = "76"
+            landmarkName = "init(document:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "DDBC19A3-8378-4241-A7A7-C6184EB88F90"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "RWRC/Models/Message.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "89"
+            endingLineNumber = "89"
+            landmarkName = "init(document:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "1B5C053F-1A6B-4D3B-B00B-E39816A2A032"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "RWRC/Models/Message.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "108"
+            endingLineNumber = "108"
+            landmarkName = "representation"
+            landmarkType = "24">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>
