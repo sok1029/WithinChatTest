@@ -51,6 +51,7 @@ struct Message: MessageType {
   
   var image: UIImage? = nil
   var downloadURL: URL? = nil
+  var imageSize: CGSize? = nil
   
   init(user: User, content: String) {
     sender = Sender(id: user.uid, displayName: AppSettings.displayName)
@@ -70,15 +71,9 @@ struct Message: MessageType {
   init?(document: QueryDocumentSnapshot) {
     let data = document.data()
     
-    guard let sentDate = data["created"] as? Date else {
-      return nil
-    }
-    guard let senderID = data["senderID"] as? String else {
-      return nil
-    }
-    guard let senderName = data["senderName"] as? String else {
-      return nil
-    }
+    guard let sentDate = data["created"] as? Date else { return nil }
+    guard let senderID = data["senderID"] as? String else { return nil }
+    guard let senderName = data["senderName"] as? String else { return nil }
     
     id = document.documentID
     
@@ -90,10 +85,12 @@ struct Message: MessageType {
       downloadURL = nil
     } else if let urlString = data["url"] as? String, let url = URL(string: urlString) {
       downloadURL = url
+      imageSize = NSCoder.cgSize(for: data["imageSize"] as! String)
       content = ""
     } else {
       return nil
     }
+    
   }
   
 }
@@ -109,6 +106,7 @@ extension Message: DatabaseRepresentation {
     
     if let url = downloadURL {
       rep["url"] = url.absoluteString
+      rep["imageSize"] = NSCoder.string(for: image?.size ?? CGSize())
     } else {
       rep["content"] = content
     }
