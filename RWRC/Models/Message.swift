@@ -38,8 +38,9 @@ struct Message: MessageType {
   let sender: Sender
   
   var data: MessageData {
-    if let image = image {
-      return .photo(image)
+    if isImageMessage() {
+      let image = (self.image == nil) ?  UIImage.init() : self.image
+      return .photo(image!)
     } else {
       return .text(content)
     }
@@ -50,6 +51,7 @@ struct Message: MessageType {
   }
   
   var image: UIImage? = nil
+
   var downloadURL: URL? = nil
   var imageSize: CGSize? = nil
   
@@ -91,6 +93,13 @@ struct Message: MessageType {
     } else {
       return nil
     }
+  }
+  
+  func isImageMessage() -> Bool{
+    if let _ = downloadURL{
+      return true
+    }
+    return false
   }
 }
 

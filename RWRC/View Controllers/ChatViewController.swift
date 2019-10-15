@@ -160,28 +160,20 @@ final class ChatViewController: MessagesViewController {
    }
   
   private func loadFirstData(_ snapshot: QuerySnapshot){
+    isFirstLoad = false
+
     snapshot.documentChanges.forEach { (change) in
-      guard var message = Message(document: change.document) else{ return }
-      if let url = message.downloadURL{
-        if let img = UIImage.loadImage(urlString: url.absoluteString){
-          message.image = img
-        }
-        else{//dummy
-          let img = UIImage.init(color: .gray, size: message.imageSize!)
-          message.image = img
-        }
-      }
+      guard let message = Message(document: change.document) else{ return }
       messages.append(message)
     }
     
-    isFirstLoad = false
-
     messages.sort()
     messagesCollectionView.reloadData()
-    messagesCollectionView.scrollToBottom()
-//    }
-  }
+    messagesCollectionView.performBatchUpdates({
+      messagesCollectionView.scrollToBottom()
+    })
 
+  }
   
   private func handleDocumentChange(_ change: DocumentChange){
     guard var message = Message(document: change.document) else{ return }
@@ -258,13 +250,10 @@ final class ChatViewController: MessagesViewController {
   private func insertMessage(_ message: Message) {
 //    guard !messages.contains(message) else {
 //      return
-//    }
+//      }
     messages.append(message)
-//    DispatchQueue.main.async { [weak self] in
-//      guard let sSelf = self else { return }
-      messages.sort()
-      messagesCollectionView.reloadData()
-//    }
+    messages.sort()
+    messagesCollectionView.reloadData()
     
     let isLatestMessage = messages.index(of: message) == (messages.count - 1)
     let shouldScrollToBottom = messagesCollectionView.isAtBottom && isLatestMessage
@@ -290,7 +279,6 @@ final class ChatViewController: MessagesViewController {
       completion(nil)
       return
     }
-    
 //    guard let scaledImage = image.scaledToSafeUploadSize,
     guard let data = image.jpegData(compressionQuality: 1.0) else {
       completion(nil)
@@ -397,49 +385,33 @@ final class ChatViewController: MessagesViewController {
     
 //    let cell = super.collectionView(collectionView, cellForItemAt: indexPath) as! MessageCollectionViewCell
     let message = messages[indexPath.section]
-
-    if let index = messages.index(of: message){
-        if let url = message.downloadURL {
-          print("1")
-          if let _ = messages[index].image{
-            print("2")
-
-//             cell.messageContainerView.image = img
-          }
-          else{
-            print("3")
-
-            //insert first dummy Image
-            let dummyImg = UIImage.init(color: .gray, size: message.imageSize!)
-//            cell.messageContainerView.image = dummyImg
-            messages[index].image = dummyImg
-            //from cache
+    
+    if message.isImageMessage() {
+      if let _ = message.image{ } //already image set
+      else{
+        if let url = message.downloadURL{
+          //from cache
+          DispatchQueue.global().sync{
             if let img = UIImage.loadImage(urlString: url.absoluteString){
-              messages[index].image = img
-              print("4")
-
-//              cell.messageContainerView.image = img
+              messages[indexPath.section].image = img
+              DispatchQueue.main.async{[weak self] in
+                self?.messagesCollectionView.reloadSections([indexPath.section])
+              }
             }
             else{
-              print("5")
-
-              //from server
+            //from server
               downloadImage(at: url) { [weak self] image in
                 guard let sSelf = self else { return }
                 guard let img = image else { return }
-                print("6")
-
-                sSelf.messages[index].image = img
+                sSelf.messages[indexPath.section].image = img
                 DispatchQueue.global().async {
                   UIImage.storeImage(urlString: url.absoluteString, img: img)
                 }
-                DispatchQueue.main.async{
-                  print("777")
-//                  cell.messageContainerView.image = img
-                  self?.messagesCollectionView.reloadSections([indexPath.section])
+                DispatchQueue.main.async{                  self?.messagesCollectionView.reloadSections([indexPath.section])
                 }
               }
             }
+          }
         }
       }
     }
@@ -501,11 +473,11 @@ extension ChatViewController: MessagesLayoutDelegate {
   }
   
   func heightForMedia(message: MessageType, at indexPath: IndexPath, with maxWidth: CGFloat, in messagesCollectionView: MessagesCollectionView) -> CGFloat {
-//       print("heightForMedia:\(indexPath.section)")
+    
     switch message.data {
-       case .photo(let image), .video(_, let image):
+       case .photo(_), .video(_, _):
         let boundingRect = CGRect(origin: .zero, size: CGSize(width: mediaWidth, height: .greatestFiniteMagnitude))
-           return AVMakeRect(aspectRatio: image.size, insideRect: boundingRect).height
+           return AVMakeRect(aspectRatio: messages[indexPath.section].imageSize!, insideRect: boundingRect).height
        default:
            return 0
        }
@@ -565,7 +537,10 @@ extension ChatViewController: MessagesDisplayDelegate {
   func backgroundColor(for message: MessageType, at indexPath: IndexPath,
     in messagesCollectionView: MessagesCollectionView) -> UIColor {
     
-    // 1
+    if messages[indexPath.section].isImageMessage(){
+      return .imageMessage
+    }
+    
     return isFromCurrentSender(message: message) ? .primary : .incomingMessage
   }
 
