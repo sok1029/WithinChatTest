@@ -96,7 +96,7 @@ struct Message: MessageType {
   }
   
   func isImageMessage() -> Bool{
-    if let _ = downloadURL{
+    if content == ""{
       return true
     }
     return false

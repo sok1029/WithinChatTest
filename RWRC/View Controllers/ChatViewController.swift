@@ -253,6 +253,8 @@ final class ChatViewController: MessagesViewController {
 //      }
     messages.append(message)
     messages.sort()
+//    messagesCollectionView.reloadSections([messages.count])
+    
     messagesCollectionView.reloadData()
     
     let isLatestMessage = messages.index(of: message) == (messages.count - 1)
@@ -407,7 +409,8 @@ final class ChatViewController: MessagesViewController {
                 DispatchQueue.global().async {
                   UIImage.storeImage(urlString: url.absoluteString, img: img)
                 }
-                DispatchQueue.main.async{                  self?.messagesCollectionView.reloadSections([indexPath.section])
+                DispatchQueue.main.async{
+                  self?.messagesCollectionView.reloadSections([indexPath.section])
                 }
               }
             }
@@ -473,7 +476,7 @@ extension ChatViewController: MessagesLayoutDelegate {
   }
   
   func heightForMedia(message: MessageType, at indexPath: IndexPath, with maxWidth: CGFloat, in messagesCollectionView: MessagesCollectionView) -> CGFloat {
-    
+  
     switch message.data {
        case .photo(_), .video(_, _):
         let boundingRect = CGRect(origin: .zero, size: CGSize(width: mediaWidth, height: .greatestFiniteMagnitude))
@@ -482,7 +485,6 @@ extension ChatViewController: MessagesLayoutDelegate {
            return 0
        }
    }
-  
   
   func avatarSize(for message: MessageType, at indexPath: IndexPath,
     in messagesCollectionView: MessagesCollectionView) -> CGSize {
