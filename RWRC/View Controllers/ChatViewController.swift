@@ -175,9 +175,7 @@ final class ChatViewController: MessagesViewController {
     }
     
     isFirstLoad = false
-    
-//    DispatchQueue.main.async {[weak self] in
-//      guard let sSelf = self else { return }
+
     messages.sort()
     messagesCollectionView.reloadData()
     messagesCollectionView.scrollToBottom()
@@ -383,7 +381,7 @@ final class ChatViewController: MessagesViewController {
   }
   
   public override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-      
+    print("cellForItem:\(indexPath.section)")
 //      guard let messagesDataSource = messagesCollectionView.messagesDataSource else {
 //          fatalError("Ouch. nil data source for messages")
 //      }
@@ -397,39 +395,55 @@ final class ChatViewController: MessagesViewController {
 //      let message = messagesDataSource.messageForItem(at: indexPath, in: messagesCollectionView)
 
     
-    let cell = super.collectionView(collectionView, cellForItemAt: indexPath) as! MessageCollectionViewCell
+//    let cell = super.collectionView(collectionView, cellForItemAt: indexPath) as! MessageCollectionViewCell
     let message = messages[indexPath.section]
 
-    if let url = message.downloadURL {
-        //from cache
-        if let img = UIImage.loadImage(urlString: url.absoluteString){
-          cell.messageContainerView.image = img
-        }
-        else{ //from server
-          //insert first dummy Image
-          let img = UIImage.init(color: .gray, size: message.imageSize!)
-          //insert server image
-          cell.messageContainerView.image = img
+    if let index = messages.index(of: message){
+        if let url = message.downloadURL {
+          print("1")
+          if let _ = messages[index].image{
+            print("2")
 
-          downloadImage(at: url) { [weak self] image in
-            guard let sSelf = self else { return }
-            guard let image = image else { return }
+//             cell.messageContainerView.image = img
+          }
+          else{
+            print("3")
 
-//            DispatchQueue.global().async {
-            DispatchQueue.global().async {
-              UIImage.storeImage(urlString: url.absoluteString, img: image)
+            //insert first dummy Image
+            let dummyImg = UIImage.init(color: .gray, size: message.imageSize!)
+//            cell.messageContainerView.image = dummyImg
+            messages[index].image = dummyImg
+            //from cache
+            if let img = UIImage.loadImage(urlString: url.absoluteString){
+              messages[index].image = img
+              print("4")
+
+//              cell.messageContainerView.image = img
             }
-            if let index = sSelf.messages.index(of: message){
-              sSelf.messages[index].image = image
-              DispatchQueue.main.async{
-                cell.messageContainerView.image = img
-                sSelf.messagesCollectionView.reloadData()
+            else{
+              print("5")
+
+              //from server
+              downloadImage(at: url) { [weak self] image in
+                guard let sSelf = self else { return }
+                guard let img = image else { return }
+                print("6")
+
+                sSelf.messages[index].image = img
+                DispatchQueue.global().async {
+                  UIImage.storeImage(urlString: url.absoluteString, img: img)
+                }
+                DispatchQueue.main.async{
+                  print("777")
+//                  cell.messageContainerView.image = img
+                  self?.messagesCollectionView.reloadSections([indexPath.section])
+                }
               }
             }
-          }
         }
+      }
     }
-      return cell
+    return super.collectionView(collectionView, cellForItemAt: indexPath) as! MessageCollectionViewCell
   }
   
 }
@@ -487,7 +501,8 @@ extension ChatViewController: MessagesLayoutDelegate {
   }
   
   func heightForMedia(message: MessageType, at indexPath: IndexPath, with maxWidth: CGFloat, in messagesCollectionView: MessagesCollectionView) -> CGFloat {
-       switch message.data {
+//       print("heightForMedia:\(indexPath.section)")
+    switch message.data {
        case .photo(let image), .video(_, let image):
         let boundingRect = CGRect(origin: .zero, size: CGSize(width: mediaWidth, height: .greatestFiniteMagnitude))
            return AVMakeRect(aspectRatio: image.size, insideRect: boundingRect).height
