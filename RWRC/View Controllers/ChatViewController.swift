@@ -396,9 +396,6 @@ final class ChatViewController: MessagesViewController {
           DispatchQueue.global().sync{
             if let img = UIImage.loadImage(urlString: url.absoluteString){
               messages[indexPath.section].image = img
-              DispatchQueue.main.async{[weak self] in
-                self?.messagesCollectionView.reloadSections([indexPath.section])
-              }
             }
             else{
             //from server
