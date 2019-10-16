@@ -46,7 +46,7 @@ final class ChatViewController: MessagesViewController {
   private let channel: Channel
   private let mediaWidth: CGFloat = UIScreen.main.bounds.size.width * 2.0 / 3.0
   
-  var isFirstLoad = true
+  var isFirstLoad = false
   var lastDocSnapshot: QueryDocumentSnapshot?
   let loadDataNum: Int = 15
   let topOffsetForLoading: CGFloat = 50
@@ -139,69 +139,55 @@ final class ChatViewController: MessagesViewController {
     self.messagesCollectionView.scrollToBottom()
   }
   
-  func initDocuments (){
-     let first = reference?.order(by: "created", descending: true).limit(to: loadDataNum)
-     messageListener = first?.addSnapshotListener({ [weak self] (snapshot, error) in
-        guard let sSelf = self else { return }
-        guard let snapshot = snapshot else { return }
+  private func initDocuments (){
+      loadFirstData()
+      addListener()
+  }
 
-        if sSelf.isFirstLoad{
-            sSelf.loadFirstData(snapshot)
-            guard let lastSnapshot = snapshot.documents.last else { return }
-            sSelf.lastDocSnapshot = lastSnapshot
-            sSelf.loadPrevData()
-        }
-        else{
-          snapshot.documentChanges.forEach { (change) in
-            sSelf.handleDocumentChange(change)
-          }
-        }
-      })
-   }
-  
-  private func loadFirstData(_ snapshot: QuerySnapshot){
-    isFirstLoad = false
+  private func addListener(){
+    messageListener = reference?.addSnapshotListener({ [weak self] (snapshot, error) in
+      guard let sSelf = self else { return }
+      guard let snapshot = snapshot else { return }
 
-    snapshot.documentChanges.forEach { (change) in
-      guard let message = Message(document: change.document) else{ return }
-      messages.append(message)
-    }
-    
-    messages.sort()
-    messagesCollectionView.reloadData()
-    messagesCollectionView.performBatchUpdates({
-      messagesCollectionView.scrollToBottom()
+      if sSelf.isFirstLoad{
+        snapshot.documentChanges.forEach { (change) in
+          sSelf.handleDocumentChange(change)
+        }
+      }
+      sSelf.isFirstLoad = true
     })
-
   }
   
-  private func handleDocumentChange(_ change: DocumentChange){
-    guard var message = Message(document: change.document) else{ return }
-    if isFromCurrentSender(message: message) { return }
-    
-    if let url = message.downloadURL {
-      //from cache
-      if let img = UIImage.loadImage(urlString: url.absoluteString){
-        message.image = img
-        insertMessage(message)
-      }
-      else{ //from server
-        //insert server image
-        downloadImage(at: url) { [weak self] image in
+  private func loadFirstData(){
+      let query = self.reference?.order(by: "created", descending: true).limit(to: loadDataNum)
+      query?.getDocuments(completion: { [weak self]( snapshot, error) in
           guard let sSelf = self else { return }
-          guard let image = image else { return }
-
-          message.image = image
-          sSelf.insertMessage(message)
-          DispatchQueue.global(qos: .background).async {
-              UIImage.storeImage(urlString: url.absoluteString, img: image)
+         
+          if let e = error{
+              print(e)
           }
-        }
-      }
-    }
-    else {
-      insertMessage(message)
-    }
+          else{
+             sSelf.lastDocSnapshot = snapshot?.documents.last
+              guard let docs = snapshot?.documents else { return }
+                  
+              var newMsgs = [Message]()
+              for doc in docs {
+                 guard let msg = Message(document: doc) else { break }
+                 newMsgs.append(msg)
+              }
+            
+              newMsgs.sort()
+              sSelf.messages.insert(contentsOf: newMsgs, at: 0)
+              sSelf.messagesCollectionView.reloadData()
+              sSelf.messagesCollectionView.performBatchUpdates({
+                sSelf.messagesCollectionView.scrollToBottom()
+              }) { _ in
+                guard let lastSnapshot = snapshot?.documents.last else { return }
+                sSelf.lastDocSnapshot = lastSnapshot
+                sSelf.loadPrevData()
+              }
+            }
+        })
   }
   
   private func loadPrevData() {
@@ -252,23 +238,57 @@ final class ChatViewController: MessagesViewController {
     })
   }
   
-  private func insertMessage(_ message: Message) {
+  private func handleDocumentChange(_ change: DocumentChange){
+    guard var message = Message(document: change.document) else{ return }
+    
+    if isFromCurrentSender(message: message) { return }
+    
+    if let url = message.downloadURL {
+      //from cache
+      if let img = UIImage.loadImage(urlString: url.absoluteString){
+        message.image = img
+        insertLatestMessage(message)
+      }
+      else{ //from server
+        //insert server image
+        downloadImage(at: url) { [weak self] image in
+          guard let sSelf = self else { return }
+          guard let image = image else { return }
+
+          message.image = image
+          sSelf.insertLatestMessage(message)
+          DispatchQueue.global(qos: .background).async {
+              UIImage.storeImage(urlString: url.absoluteString, img: image)
+          }
+        }
+      }
+    }
+    else {
+      insertLatestMessage(message)
+    }
+  }
+  
+  private func insertLatestMessage(_ message: Message) {
 //    guard !messages.contains(message) else {
 //      return
 //      }
+
     messages.append(message)
     messages.sort()
+//    if messages.index(of: message) != (messages.count - 1) { return } //not lastMessage
+
+    let shouldScrollToBottom = isFromCurrentSender(message: message) ||
+        messagesCollectionView.isAtBottom
+
     messagesCollectionView.reloadData()
-    
-    let isLatestMessage = messages.index(of: message) == (messages.count - 1)
-    let shouldScrollToBottom = messagesCollectionView.isAtBottom && isLatestMessage
-    
+
     if shouldScrollToBottom {
-        DispatchQueue.main.async {
-          self.messagesCollectionView.scrollToBottom(animated: false)
+        messagesCollectionView.performBatchUpdates({
+        }) { _ in
+          self.messagesCollectionView.scrollToBottom(animated: true)
         }
     }
-  }
+}
   
   private func save(_ message: Message) {
     reference?.addDocument(data: message.representation) { error in
@@ -377,7 +397,7 @@ final class ChatViewController: MessagesViewController {
   
   public override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
     let message = messages[indexPath.section]
-    
+
     if message.isImageMessage() {
       if let _ = message.image{ } //already image set
       else{
@@ -506,10 +526,7 @@ extension ChatViewController: MessagesLayoutDelegate {
   
   private func preApplyPhoto(_ image: UIImage){
     let message = Message(user: user, image: image)
-    insertMessage(message)
-    DispatchQueue.main.async {
-      self.messagesCollectionView.scrollToBottom(animated: false)
-    }
+    insertLatestMessage(message)
   }
 }
 
@@ -518,7 +535,7 @@ extension ChatViewController: MessagesLayoutDelegate {
 extension ChatViewController: MessagesDisplayDelegate {
   
   func configureAvatarView(_ avatarView: AvatarView, for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) {
-      avatarView.image = UIImage.init(named: "2")
+//      avatarView.image = UIImage.init(named: "2")
       
   }
   func backgroundColor(for message: MessageType, at indexPath: IndexPath,
@@ -555,16 +572,10 @@ extension ChatViewController: MessageInputBarDelegate {
   
   func messageInputBar(_ inputBar: MessageInputBar, didPressSendButtonWith text: String) {
 
-    // 1
     let message = Message(user: user, content: text)
-
-    // 2
-    insertMessage(message)
-    DispatchQueue.main.async {
-      self.messagesCollectionView.scrollToBottom(animated: false)
-    }
+    insertLatestMessage(message)
+    
     save(message)
-    // 3
     inputBar.inputTextView.text = ""
   }
   

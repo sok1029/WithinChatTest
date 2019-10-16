@@ -31,7 +31,6 @@ import MessageKit
 import FirebaseFirestore
 
 struct Message: MessageType {
-  
   let id: String?
   let content: String
   let sentDate: Date
