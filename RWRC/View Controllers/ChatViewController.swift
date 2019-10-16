@@ -193,7 +193,7 @@ final class ChatViewController: MessagesViewController {
 
           message.image = image
           sSelf.insertMessage(message)
-          DispatchQueue.global().async {
+          DispatchQueue.global(qos: .background).async {
               UIImage.storeImage(urlString: url.absoluteString, img: image)
           }
         }
@@ -309,7 +309,9 @@ final class ChatViewController: MessagesViewController {
       
       var message = Message(user: sSelf.user, image: thumbImg)
       message.downloadURL = url
-      UIImage.storeImage(urlString: url.absoluteString, img: image)
+      DispatchQueue.global(qos: .background).async {
+        UIImage.storeImage(urlString: url.absoluteString, img: image)
+      }
       sSelf.save(message)
     }
   }
@@ -371,21 +373,6 @@ final class ChatViewController: MessagesViewController {
   }
   
   public override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-    print("cellForItem:\(indexPath.section)")
-//      guard let messagesDataSource = messagesCollectionView.messagesDataSource else {
-//          fatalError("Ouch. nil data source for messages")
-//      }
-//
-//      // Very important to check this when overriding `cellForItemAt`
-//      // Super method will handle returning the typing indicator cell
-////      guard !isSectionReservedForTypingIndicator(indexPath.section) else {
-////          return super.collectionView(collectionView, cellForItemAt: indexPath)
-////      }
-////
-//      let message = messagesDataSource.messageForItem(at: indexPath, in: messagesCollectionView)
-
-    
-//    let cell = super.collectionView(collectionView, cellForItemAt: indexPath) as! MessageCollectionViewCell
     let message = messages[indexPath.section]
     
     if message.isImageMessage() {
@@ -393,7 +380,6 @@ final class ChatViewController: MessagesViewController {
       else{
         if let url = message.downloadURL{
           //from cache
-          DispatchQueue.global().sync{
             if let img = UIImage.loadImage(urlString: url.absoluteString){
               messages[indexPath.section].image = img
             }
@@ -403,7 +389,7 @@ final class ChatViewController: MessagesViewController {
                 guard let sSelf = self else { return }
                 guard let img = image else { return }
                 sSelf.messages[indexPath.section].image = img
-                DispatchQueue.global().async {
+                DispatchQueue.global(qos: .background).async {
                   UIImage.storeImage(urlString: url.absoluteString, img: img)
                 }
                 DispatchQueue.main.async{
@@ -411,12 +397,11 @@ final class ChatViewController: MessagesViewController {
                 }
               }
             }
-          }
         }
       }
     }
     return super.collectionView(collectionView, cellForItemAt: indexPath) as! MessageCollectionViewCell
-  }
+ }
   
 }
 

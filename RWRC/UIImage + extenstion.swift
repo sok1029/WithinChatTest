@@ -24,7 +24,6 @@ extension UIImage {
     }
     dict![urlString] = path
     UserDefaults.standard.set(dict, forKey: "ImageCache")
-    
   }
 
   static func loadImage(urlString: String) -> UIImage?{
