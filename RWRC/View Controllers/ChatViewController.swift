@@ -49,7 +49,7 @@ final class ChatViewController: MessagesViewController {
   var isFirstLoad = true
   var lastDocSnapshot: QueryDocumentSnapshot?
   let loadDataNum: Int = 15
-  let topOffsetForLoading: CGFloat = -50
+  let topOffsetForLoading: CGFloat = 50
   
   private var moveToBottomButton: UIButton
   var fetching = false
@@ -234,13 +234,18 @@ final class ChatViewController: MessagesViewController {
 
             sSelf.messages.insert(contentsOf: newMsgs, at: 0)
             sSelf.messagesCollectionView.reloadData()
+            
             sSelf.messagesCollectionView.performBatchUpdates({
-              let moveSection =  newMsgs.count > 0 ? (newMsgs.count - 2) : 0
-               let indexPath = IndexPath(row: 0, section: moveSection)
+              let moveSection =  newMsgs.count > 0 ? (newMsgs.count) : 0
+              let indexPath = IndexPath(row: 0, section: moveSection)
                sSelf.messagesCollectionView.scrollToItem(at: indexPath, at: .top, animated: false)
              }) { _ in
-               sSelf.fetching = false
-             }
+              
+              UIView.animate(withDuration: 0.55, delay: 0.0, options: .curveEaseOut, animations: {
+                sSelf.messagesCollectionView.setContentOffset(CGPoint(x: 0, y: sSelf.messagesCollectionView.contentOffset.y - 50), animated: false)
+              })
+              sSelf.fetching = false
+            }
           }
           sSelf.runLoadPrevMessage = loadPrevMessage
         }
@@ -253,8 +258,6 @@ final class ChatViewController: MessagesViewController {
 //      }
     messages.append(message)
     messages.sort()
-//    messagesCollectionView.reloadSections([messages.count])
-    
     messagesCollectionView.reloadData()
     
     let isLatestMessage = messages.index(of: message) == (messages.count - 1)
@@ -348,8 +351,8 @@ final class ChatViewController: MessagesViewController {
     let boundsHeight = scrollView.bounds.height
     let contentHeight = scrollView.contentSize.height
     let contentOffsetY = scrollView.contentOffset.y
+
     moveToBottomButton.isHidden = (contentHeight - contentOffsetY) > (boundsHeight * 2) ? false : true
-    
     if (contentOffsetY < topOffsetForLoading) && scrollDecelerating{
       if !fetching{
           fetchData()
