@@ -29,9 +29,15 @@
 import UIKit
 
 extension UIScrollView {
+  var moveToBottomHeightFromBottom: CGFloat {
+    return 70.0
+  }
   
   var isAtBottom: Bool {
-    return contentOffset.y >= verticalOffsetForBottom
+    print("Y:\(contentOffset.y)")
+    print("verticalOffsetForBottom:\(verticalOffsetForBottom)")
+
+    return contentOffset.y >= verticalOffsetForBottom - moveToBottomHeightFromBottom
   }
   
   var verticalOffsetForBottom: CGFloat {
@@ -39,8 +45,7 @@ extension UIScrollView {
     let scrollContentSizeHeight = contentSize.height
     let bottomInset = contentInset.bottom
     let scrollViewBottomOffset = scrollContentSizeHeight + bottomInset - scrollViewHeight
-    print("bottomOffset:\(scrollViewBottomOffset)")
-    print("contentSizeHeight:\(contentSize.height)")
+
     return scrollViewBottomOffset
   }
   
