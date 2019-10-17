@@ -86,6 +86,13 @@ final class ChatViewController: MessagesViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
     
+    guard let id = channel.id else {
+         navigationController?.popViewController(animated: true)
+         return
+       }
+    
+    initDocuments(id)
+
     navigationItem.largeTitleDisplayMode = .never
     
     maintainPositionOnKeyboardFrameChanged = true
@@ -96,15 +103,7 @@ final class ChatViewController: MessagesViewController {
     messagesCollectionView.messagesDataSource = self
     messagesCollectionView.messagesLayoutDelegate = self
     messagesCollectionView.messagesDisplayDelegate = self
-    
-    guard let id = channel.id else {
-      navigationController?.popViewController(animated: true)
-      return
-    }
 
-    reference = db.collection(["channels", id, "thread"].joined(separator: "/"))
-
-    initDocuments()
     
     let cameraItem = InputBarButtonItem(type: .system)
     cameraItem.tintColor = .primary
@@ -119,43 +118,28 @@ final class ChatViewController: MessagesViewController {
 
     messageInputBar.leftStackView.alignment = .center
     messageInputBar.setLeftStackViewWidthConstant(to: 50, animated: false)
-
     messageInputBar.setStackViewItems([cameraItem], forStack: .left, animated: false)
     
-//    moveToButtomButton = UIButton(frame: CGRect(x: 250, y: 250, width: 50, height: 50))
     moveToBottomButton.backgroundColor = .red
     moveToBottomButton.isHidden = true
     moveToBottomButton.addTarget(self, action: #selector(moveToBottom), for: .touchUpInside)
     self.view.addSubview(moveToBottomButton)
+
   }
   
   deinit {
     messageListener?.remove()
   }
   
-  
   // MARK: - Helpers
   @IBAction func moveToBottom(){
     self.messagesCollectionView.scrollToBottom()
   }
   
-  private func initDocuments (){
+  private func initDocuments (_ id: String ){
+      reference = db.collection(["channels", id, "thread"].joined(separator: "/"))
       loadFirstData()
       addListener()
-  }
-
-  private func addListener(){
-    messageListener = reference?.addSnapshotListener({ [weak self] (snapshot, error) in
-      guard let sSelf = self else { return }
-      guard let snapshot = snapshot else { return }
-
-      if sSelf.isFirstLoad{
-        snapshot.documentChanges.forEach { (change) in
-          sSelf.handleDocumentChange(change)
-        }
-      }
-      sSelf.isFirstLoad = true
-    })
   }
   
   private func loadFirstData(){
@@ -187,7 +171,21 @@ final class ChatViewController: MessagesViewController {
                 sSelf.loadPrevData()
               }
             }
-        })
+      })
+  }
+
+  private func addListener(){
+    messageListener = reference?.addSnapshotListener({ [weak self] (snapshot, error) in
+      guard let sSelf = self else { return }
+      guard let snapshot = snapshot else { return }
+
+      if sSelf.isFirstLoad{
+        snapshot.documentChanges.forEach { (change) in
+          sSelf.handleDocumentChange(change)
+        }
+      }
+      sSelf.isFirstLoad = true
+    })
   }
   
   private func loadPrevData() {
