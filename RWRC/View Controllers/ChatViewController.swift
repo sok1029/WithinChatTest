@@ -49,7 +49,9 @@ final class ChatViewController: MessagesViewController {
   var isFirstLoad = false
 
   var lastDocSnapshot: QueryDocumentSnapshot?
-  let loadDataNum: Int = 15
+  let loadPrevDataNum: Int = 30
+  let loadFirstDatNum: Int = 15
+  
   let topOffsetForLoading: CGFloat = 50
   
   private var moveToBottomButton: UIButton
@@ -104,7 +106,7 @@ final class ChatViewController: MessagesViewController {
     messagesCollectionView.messagesDataSource = self
     messagesCollectionView.messagesLayoutDelegate = self
     messagesCollectionView.messagesDisplayDelegate = self
-
+    messagesCollectionView.indicatorStyle = .black
     
     let cameraItem = InputBarButtonItem(type: .system)
     cameraItem.tintColor = .primary
@@ -141,7 +143,7 @@ final class ChatViewController: MessagesViewController {
   private func initDocuments (_ id: String ){
      reference = db.collection(["channels", id, "thread"].joined(separator: "/"))
 
-     let first = reference?.order(by: "created", descending: true).limit(to: loadDataNum)
+     let first = reference?.order(by: "created", descending: true).limit(to: loadFirstDatNum)
      messageListener = first?.addSnapshotListener({ [weak self] (snapshot, error) in
         guard let sSelf = self else { return }
         guard let snapshot = snapshot else { return }
@@ -172,16 +174,14 @@ final class ChatViewController: MessagesViewController {
     
     messages.sort()
     messagesCollectionView.reloadData()
-    messagesCollectionView.performBatchUpdates({
-      messagesCollectionView.scrollToBottom()
-    })
+    messagesCollectionView.scrollToBottom()
 
   }
   
   private func loadPrevData() {
       guard let snapShot = self.lastDocSnapshot else { return }
 
-      let prev = self.reference?.order(by: "created", descending: true).limit(to: loadDataNum).start(afterDocument: snapShot)
+      let prev = self.reference?.order(by: "created", descending: true).limit(to: loadPrevDataNum).start(afterDocument: snapShot)
       prev?.getDocuments(completion: { [weak self]( snapshot, error) in
         guard let sSelf = self else { return }
         
@@ -209,14 +209,14 @@ final class ChatViewController: MessagesViewController {
             sSelf.messages.insert(contentsOf: newMsgs, at: 0)
             sSelf.messagesCollectionView.reloadData()
             
+            let moveSection =  newMsgs.count > 0 ? (newMsgs.count) : 0
+            let indexPath = IndexPath(row: 0, section: moveSection)
+            sSelf.messagesCollectionView.scrollToItem(at: indexPath, at: .top, animated: false)
+            
             sSelf.messagesCollectionView.performBatchUpdates({
-              let moveSection =  newMsgs.count > 0 ? (newMsgs.count) : 0
-              let indexPath = IndexPath(row: 0, section: moveSection)
-               sSelf.messagesCollectionView.scrollToItem(at: indexPath, at: .top, animated: false)
              }) { _ in
-              
               UIView.animate(withDuration: 0.55, delay: 0.0, options: .curveEaseOut, animations: {
-                sSelf.messagesCollectionView.setContentOffset(CGPoint(x: 0, y: sSelf.messagesCollectionView.contentOffset.y - 50), animated: false)
+                sSelf.messagesCollectionView.setContentOffset(CGPoint(x: 0, y: sSelf.messagesCollectionView.contentOffset.y - 100), animated: false)
               })
               sSelf.fetching = false
             }
@@ -257,7 +257,7 @@ final class ChatViewController: MessagesViewController {
   }
   
   private func insertLatestMessage(_ message: Message) {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.01, execute: { [weak self] in
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: { [weak self] in
       guard let sSelf = self else { return }
 
       sSelf.messages.append(message)
@@ -269,10 +269,7 @@ final class ChatViewController: MessagesViewController {
       sSelf.messagesCollectionView.reloadData()
 
       if shouldScrollToBottom {
-          sSelf.messagesCollectionView.performBatchUpdates({
-          }) { [weak self] _ in
-                self?.messagesCollectionView.scrollToBottom(animated: false)
-          }
+        self?.messagesCollectionView.scrollToBottom(animated: true)
       }
     })
 }
@@ -377,7 +374,7 @@ final class ChatViewController: MessagesViewController {
   
   private func fetchData(){
       fetching = true
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.0001, execute: { [weak self] in
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: { [weak self] in
           self?.loadPrevData()
       })
   }
