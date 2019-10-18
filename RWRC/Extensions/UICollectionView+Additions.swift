@@ -34,9 +34,6 @@ extension UIScrollView {
   }
   
   var isAtBottom: Bool {
-    print("Y:\(contentOffset.y)")
-    print("verticalOffsetForBottom:\(verticalOffsetForBottom)")
-
     return contentOffset.y >= verticalOffsetForBottom - moveToBottomHeightFromBottom
   }
   

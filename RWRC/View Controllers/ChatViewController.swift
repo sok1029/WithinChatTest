@@ -257,14 +257,12 @@ final class ChatViewController: MessagesViewController {
   }
   
   private func insertLatestMessage(_ message: Message) {
-//    guard !messages.contains(message) else {
-//      return
-//      }
-    messages.append(message)
-    messages.sort()
-    
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.01, execute: { [weak self] in
       guard let sSelf = self else { return }
+
+      sSelf.messages.append(message)
+      sSelf.messages.sort()
+    
       let shouldScrollToBottom = sSelf.isFromCurrentSender(message: message) ||
         sSelf.messagesCollectionView.isAtBottom
 
@@ -273,7 +271,7 @@ final class ChatViewController: MessagesViewController {
       if shouldScrollToBottom {
           sSelf.messagesCollectionView.performBatchUpdates({
           }) { [weak self] _ in
-                self?.messagesCollectionView.scrollToBottom(animated: true)
+                self?.messagesCollectionView.scrollToBottom(animated: false)
           }
       }
     })
