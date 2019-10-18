@@ -27,6 +27,7 @@
 /// THE SOFTWARE.
 
 import UIKit
+import Foundation
 import Firebase
 import MessageKit
 import FirebaseFirestore
@@ -365,11 +366,11 @@ final class ChatViewController: MessagesViewController {
   }
   
   func scrollViewWillBeginDecelerating(_ scrollView: UIScrollView) {
-     scrollDecelerating = true
+      scrollDecelerating = true
   }
   
   func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-    scrollDecelerating = false
+      scrollDecelerating = false
   }
   
   private func fetchData(){
@@ -437,14 +438,18 @@ extension ChatViewController: MessagesDataSource {
   func cellTopLabelAlignment(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> LabelAlignment {
 //      guard let dataSource = messagesCollectionView.messagesDataSource else { return nil }
     
-      let edgeInset = UIEdgeInsets(top: 0, left: 5, bottom: 0, right: 0)
+      let edgeInset = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 0)
       return isFromCurrentSender(message: message) ? .messageTrailing(.zero) : .messageLeading(edgeInset)
   }
 
   // 4
   func cellTopLabelAttributedText(for message: MessageType,
     at indexPath: IndexPath) -> NSAttributedString? {
-
+    
+    if isSkipProfileAndBubbleTail(indexPath){
+      return nil
+    }
+    
     let name = isFromCurrentSender(message: message) ? "" : message.sender.displayName
     return NSAttributedString(
       string: name,
@@ -454,12 +459,39 @@ extension ChatViewController: MessagesDataSource {
       ]
     )
   }
+  
+  private func isSkipProfileAndBubbleTail(_ indexPath: IndexPath) -> Bool{
+      let message = messages[indexPath.section]
+         
+      if indexPath.section > 0{
+        let prevMessage = messages[indexPath.section - 1]
+        let dateCompareResult = Calendar.current.compare(prevMessage.sentDate, to: message.sentDate, toGranularity: .minute)
+       
+        if prevMessage.sender.id == message.sender.id && dateCompareResult == .orderedSame  {
+              return true
+            }
+      }
+      return false
+  }
 }
 
 // MARK: - MessagesLayoutDelegate
 
 extension ChatViewController: MessagesLayoutDelegate {
 
+//  func messageLabelInset(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> UIEdgeInsets {
+//        guard let dataSource = messagesCollectionView.messagesDataSource else {
+//          return UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+//        }
+//    
+//        if dataSource.isFromCurrentSender(message: message) {
+//          return UIEdgeInsets(top: 50, left: 18, bottom: 7, right: 14)
+//        } else {
+//            return UIEdgeInsets(top: 50, left: 18, bottom: 7, right: 14)
+//        }
+//  }
+
+  
   func widthForMedia(message: MessageType, at indexPath: IndexPath, with maxWidth: CGFloat, in messagesCollectionView: MessagesCollectionView) -> CGFloat {
       return mediaWidth
   }
@@ -491,14 +523,19 @@ extension ChatViewController: MessagesLayoutDelegate {
 //
 //  }
   func avatarPosition(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> AvatarPosition {
-    return AvatarPosition(horizontal: .natural, vertical: .messageBottom)
+      return AvatarPosition(horizontal: .natural, vertical: .messageBottom)
   }
   
+//  func headerViewSize(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> CGSize {
+//      let height: CGFloat = isSkipProfileAndBubbleTail(indexPath) ?  0 : 7
+//      return CGSize(width: 0, height: height)
+//  }
+
   func footerViewSize(for message: MessageType, at indexPath: IndexPath,
     in messagesCollectionView: MessagesCollectionView) -> CGSize {
 
     // 2
-    return CGSize(width: 0, height: 8)
+    return CGSize(width: 0, height: 0)
   }
 
   func heightForLocation(message: MessageType, at indexPath: IndexPath,
@@ -519,6 +556,7 @@ extension ChatViewController: MessagesLayoutDelegate {
 extension ChatViewController: MessagesDisplayDelegate {
   
   func configureAvatarView(_ avatarView: AvatarView, for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) {
+      avatarView.isHidden = isSkipProfileAndBubbleTail(indexPath) ? true : false
 //      avatarView.image = UIImage.init(named: "2")
       
   }
@@ -535,7 +573,6 @@ extension ChatViewController: MessagesDisplayDelegate {
   func shouldDisplayHeader(for message: MessageType, at indexPath: IndexPath,
     in messagesCollectionView: MessagesCollectionView) -> Bool {
 
-    // 2
     return false
   }
 
@@ -543,9 +580,7 @@ extension ChatViewController: MessagesDisplayDelegate {
     in messagesCollectionView: MessagesCollectionView) -> MessageStyle {
 
     let corner: MessageStyle.TailCorner = isFromCurrentSender(message: message) ? .bottomRight : .bottomLeft
-
-    // 3
-    return .bubbleTail(corner, .pointedEdge)
+    return isSkipProfileAndBubbleTail(indexPath) ? .bubble : .bubbleTail(corner, .pointedEdge)
   }
   
 }
