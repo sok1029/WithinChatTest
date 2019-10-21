@@ -61,6 +61,9 @@ final class ChatViewController: MessagesViewController {
 
   var runLoadPrevMessage: (() -> ())?
   
+  let cellTopLabelBottomPadding: CGFloat = 2
+  
+  
   private var isSendingPhoto = false {
     didSet {
       DispatchQueue.main.async {
@@ -108,7 +111,7 @@ final class ChatViewController: MessagesViewController {
     messagesCollectionView.messagesLayoutDelegate = self
     messagesCollectionView.messagesDisplayDelegate = self
     messagesCollectionView.messageCellDelegate = self
-    
+  
     messagesCollectionView.indicatorStyle = .black
     
     let cameraItem = InputBarButtonItem(type: .system)
@@ -384,7 +387,6 @@ final class ChatViewController: MessagesViewController {
   
   public override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
     let message = messages[indexPath.section]
-
     if message.isImageMessage() {
       if let _ = message.image{ } //already image set
       else{
@@ -424,12 +426,10 @@ extension ChatViewController: MessagesDataSource {
     return Sender(id: user.uid, displayName: AppSettings.displayName)
   }
 
-  // 2
   func numberOfMessages(in messagesCollectionView: MessagesCollectionView) -> Int {
     return messages.count
   }
 
-  // 3
   func messageForItem(at indexPath: IndexPath,
     in messagesCollectionView: MessagesCollectionView) -> MessageType {
 
@@ -438,29 +438,68 @@ extension ChatViewController: MessagesDataSource {
   
 
   func cellTopLabelAlignment(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> LabelAlignment {
-//      guard let dataSource = messagesCollectionView.messagesDataSource else { return nil }
+      if isSkipTopLabel(message: message, indexPath: indexPath) {
+        return isFromCurrentSender(message: message) ? .messageTrailing(.zero) : .messageLeading(.zero)
+      }
     
-      let edgeInset = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 0)
+      let edgeInset = UIEdgeInsets(top: 0, left: 15, bottom: cellTopLabelBottomPadding, right: 0)
+
       return isFromCurrentSender(message: message) ? .messageTrailing(.zero) : .messageLeading(edgeInset)
   }
 
-  // 4
   func cellTopLabelAttributedText(for message: MessageType,
     at indexPath: IndexPath) -> NSAttributedString? {
-    
-    if isSkipProfileAndBubbleTail(indexPath){
-      return nil
+    if isSkipTopLabel(message: message, indexPath: indexPath) {
+        return nil
     }
     
-    let name = isFromCurrentSender(message: message) ? "" : message.sender.displayName
-    return NSAttributedString(
+    let name = message.sender.displayName
+
+    let nameAttriStr = NSAttributedString(
       string: name,
       attributes: [
-        .font: UIFont.preferredFont(forTextStyle: .caption1),
+        .font: UIFont.systemFont(ofSize: 14),
         .foregroundColor: UIColor(white: 0.3, alpha: 1)
       ]
     )
+    return nameAttriStr
   }
+//
+//  func cellBottomLabelAlignment(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> LabelAlignment {
+//    if isSkipProfileAndBubbleTail(indexPath){
+//      return .cellCenter(.zero)
+//    }
+//    let myMsgEdgeInset = UIEdgeInsets(top: 2, left: 0, bottom: 0, right: 0)
+//    let uMsgEdgeInset = UIEdgeInsets(top: 2, left: 0, bottom: 0, right: 0)
+//
+//    return isFromCurrentSender(message: message) ? .messageTrailing(myMsgEdgeInset) : .messageLeading(uMsgEdgeInset)
+//  }
+//
+//  func cellBottomLabelAttributedText(for message: MessageType, at indexPath: IndexPath) -> NSAttributedString? {
+//      func sendedMessageTimeDisplay(_ date: Date) -> String{
+//          let dateFormatter = DateFormatter()
+//          dateFormatter.dateFormat = "h:mm a"
+//
+//          return dateFormatter.string(from: date)
+//        }
+//
+//        if isSkipProfileAndBubbleTail(indexPath){
+//          return nil
+//        }
+//
+//        let time = sendedMessageTimeDisplay(message.sentDate)
+//
+////        let spaceStr = NSAttributedString.init(string: "  ")
+//        let timeAttriStr = NSAttributedString(
+//             string: time,
+//             attributes: [
+//               .font: UIFont.systemFont(ofSize: 10),
+//               .foregroundColor: UIColor(white: 0.3, alpha: 0.7)
+//             ]
+//        )
+//
+//        return timeAttriStr
+//  }
   
   private func isSkipProfileAndBubbleTail(_ indexPath: IndexPath) -> Bool{
       let message = messages[indexPath.section]
@@ -469,12 +508,17 @@ extension ChatViewController: MessagesDataSource {
         let prevMessage = messages[indexPath.section - 1]
         let dateCompareResult = Calendar.current.compare(prevMessage.sentDate, to: message.sentDate, toGranularity: .minute)
        
-        if prevMessage.sender.id == message.sender.id && dateCompareResult == .orderedSame  {
-              return true
-            }
+        if prevMessage.sender.id == message.sender.id && dateCompareResult == .orderedSame{
+            return true
+        }
       }
       return false
   }
+  
+  private func isSkipTopLabel(message: MessageType, indexPath: IndexPath ) -> Bool{
+      return isFromCurrentSender(message: message) || isSkipProfileAndBubbleTail(indexPath)
+  }
+  
 }
 
 // MARK: - MessagesLayoutDelegate
@@ -515,15 +559,20 @@ extension ChatViewController: MessagesLayoutDelegate {
     return isFromCurrentSender(message: message) ? .zero :  CGSize(width: 35, height: 35)
   }
   
-//  func messagePadding(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> UIEdgeInsets {
-//
-//    if isFromCurrentSender(message: message) {
-//            return UIEdgeInsets(top: 0, left: 30, bottom: 0, right: 4)
-//        } else {
-//            return UIEdgeInsets(top: 0, left: 4, bottom: 0, right: 30)
-//        }
-//
-//  }
+  func messagePadding(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> UIEdgeInsets {
+    let isSkipBubbleTail = isSkipProfileAndBubbleTail(indexPath)
+    let topInset: CGFloat = isSkipBubbleTail ? -6 : 0
+
+    if isFromCurrentSender(message: message) {
+        return UIEdgeInsets(top: topInset, left: 30, bottom: 0, right: 4)
+    }
+    else {
+      let bottomInset: CGFloat = isSkipBubbleTail ? 0 : cellTopLabelBottomPadding
+      return UIEdgeInsets(top: topInset, left: 4, bottom: bottomInset, right: 30)
+    }
+
+  }
+  
   func avatarPosition(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> AvatarPosition {
       return AvatarPosition(horizontal: .natural, vertical: .messageBottom)
   }
@@ -536,14 +585,12 @@ extension ChatViewController: MessagesLayoutDelegate {
   func footerViewSize(for message: MessageType, at indexPath: IndexPath,
     in messagesCollectionView: MessagesCollectionView) -> CGSize {
 
-    // 2
     return CGSize(width: 0, height: 0)
   }
 
   func heightForLocation(message: MessageType, at indexPath: IndexPath,
     with maxWidth: CGFloat, in messagesCollectionView: MessagesCollectionView) -> CGFloat {
 
-    // 3
     return 0
   }
   
@@ -577,6 +624,14 @@ extension ChatViewController: MessagesDisplayDelegate {
 
     return false
   }
+  
+//  func messageFooterView(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> MessageFooterView {
+//    let footer = messagesCollectionView.dequeueReusableFooterView(MessageFooterView.self, for: indexPath)
+//    let label = UILabel.init(frame: CGRect(x: 0, y: 0, width: 20, height: 100))
+//    footer.addSubview(label)
+//    label.text = MessageKitDateFormatter.shared.string(from: message.sentDate)
+//    return footer
+//  }
 
   func messageStyle(for message: MessageType, at indexPath: IndexPath,
     in messagesCollectionView: MessagesCollectionView) -> MessageStyle {
@@ -595,7 +650,8 @@ extension ChatViewController: MessagesDisplayDelegate {
           NSAttributedString.Key.underlineStyle: NSUnderlineStyle.single.rawValue,
           NSAttributedString.Key.underlineColor: UIColor.white
           ]
-    }
+  }
+  
 }
 
 extension ChatViewController: MessageCellDelegate {
