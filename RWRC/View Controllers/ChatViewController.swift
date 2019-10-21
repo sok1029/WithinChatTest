@@ -61,7 +61,7 @@ final class ChatViewController: MessagesViewController {
 
   var runLoadPrevMessage: (() -> ())?
   
-  let cellTopLabelBottomPadding: CGFloat = 2
+  let cellTopLabelBottomPadding: CGFloat = 1
   
   
   private var isSendingPhoto = false {
@@ -458,7 +458,7 @@ extension ChatViewController: MessagesDataSource {
     let nameAttriStr = NSAttributedString(
       string: name,
       attributes: [
-        .font: UIFont.systemFont(ofSize: 14),
+        .font: UIFont.systemFont(ofSize: 12),
         .foregroundColor: UIColor(white: 0.3, alpha: 1)
       ]
     )
@@ -640,18 +640,27 @@ extension ChatViewController: MessagesDisplayDelegate {
     return isSkipProfileAndBubbleTail(indexPath) ? .bubble : .bubbleTail(corner, .pointedEdge)
   }
   
+  func textColor(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> UIColor {
+    return getTextColor(message: message)
+  }
+  
   func enabledDetectors(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> [DetectorType] {
       return [.url]
   }
   
+  
   func detectorAttributes(for detector: DetectorType, and message: MessageType, at indexPath: IndexPath) -> [NSAttributedString.Key: Any] {
-        return [
-          NSAttributedString.Key.foregroundColor: UIColor.white,
+      
+      return [
+          NSAttributedString.Key.foregroundColor: getTextColor(message: message),
           NSAttributedString.Key.underlineStyle: NSUnderlineStyle.single.rawValue,
-          NSAttributedString.Key.underlineColor: UIColor.white
+          NSAttributedString.Key.underlineColor: getTextColor(message: message)
           ]
   }
-  
+ 
+  private func getTextColor(message: MessageType) -> UIColor{
+    return isFromCurrentSender(message: message) ? .white : .darkText
+  }
 }
 
 extension ChatViewController: MessageCellDelegate {
