@@ -107,6 +107,8 @@ final class ChatViewController: MessagesViewController {
     messagesCollectionView.messagesDataSource = self
     messagesCollectionView.messagesLayoutDelegate = self
     messagesCollectionView.messagesDisplayDelegate = self
+    messagesCollectionView.messageCellDelegate = self
+    
     messagesCollectionView.indicatorStyle = .black
     
     let cameraItem = InputBarButtonItem(type: .system)
@@ -583,7 +585,30 @@ extension ChatViewController: MessagesDisplayDelegate {
     return isSkipProfileAndBubbleTail(indexPath) ? .bubble : .bubbleTail(corner, .pointedEdge)
   }
   
+  func enabledDetectors(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> [DetectorType] {
+      return [.url]
+  }
+  
+  func detectorAttributes(for detector: DetectorType, and message: MessageType, at indexPath: IndexPath) -> [NSAttributedString.Key: Any] {
+        return [
+          NSAttributedString.Key.foregroundColor: UIColor.white,
+          NSAttributedString.Key.underlineStyle: NSUnderlineStyle.single.rawValue,
+          NSAttributedString.Key.underlineColor: UIColor.white
+          ]
+    }
 }
+
+extension ChatViewController: MessageCellDelegate {
+  
+
+}
+
+extension ChatViewController: MessageLabelDelegate {
+  func didSelectURL(_ url: URL){
+    UIApplication.shared.open(url)
+  }
+}
+
 
 // MARK: - MessageInputBarDelegate
 
