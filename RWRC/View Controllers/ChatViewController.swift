@@ -153,7 +153,7 @@ final class ChatViewController: MessagesViewController {
      messageListener = first?.addSnapshotListener({ [weak self] (snapshot, error) in
         guard let sSelf = self else { return }
         guard let snapshot = snapshot else { return }
-
+      
         if !sSelf.isFirstLoad{
             sSelf.loadFirstData(snapshot)
             guard let lastSnapshot = snapshot.documents.last else { return }
@@ -161,6 +161,8 @@ final class ChatViewController: MessagesViewController {
             sSelf.loadPrevData()
         }
         else{
+            if snapshot.metadata.hasPendingWrites { return }
+            
             snapshot.documentChanges.forEach { (change) in
               if change.type == .added{
                 sSelf.handleDocumentChange(change)
@@ -234,9 +236,7 @@ final class ChatViewController: MessagesViewController {
   
   private func handleDocumentChange(_ change: DocumentChange){
     guard var message = Message(document: change.document) else{ return }
-    
-    if isFromCurrentSender(message: message) { return }
-    
+        
     if let url = message.downloadURL {
       //from cache
       if let img = UIImage.loadImage(urlString: url.absoluteString){
@@ -311,17 +311,17 @@ final class ChatViewController: MessagesViewController {
   
   private func sendPhoto(_ image: UIImage) {
     let thumbImg = image.wxCompress()
-    preApplyPhoto(thumbImg)
+    var message = Message(user: user, image: thumbImg)
+    preApplyPhoto(message)
     isSendingPhoto = true
-    
+
     uploadImage(thumbImg, to: channel) { [weak self] url in
       guard let sSelf = self else { return }
       sSelf.isSendingPhoto = false
       
       guard let url = url else { return }
-      
-      var message = Message(user: sSelf.user, image: thumbImg)
       message.downloadURL = url
+      
       DispatchQueue.global(qos: .background).async {
         UIImage.storeImage(urlString: url.absoluteString, img: image)
       }
@@ -348,11 +348,11 @@ final class ChatViewController: MessagesViewController {
     let picker = UIImagePickerController()
     picker.delegate = self
 
-    if UIImagePickerController.isSourceTypeAvailable(.camera) {
-      picker.sourceType = .camera
-    } else {
+//    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+//      picker.sourceType = .camera
+//    } else {
       picker.sourceType = .photoLibrary
-    }
+//    }
 
     present(picker, animated: true, completion: nil)
   }
@@ -401,11 +401,12 @@ final class ChatViewController: MessagesViewController {
                 guard let sSelf = self else { return }
                 guard let img = image else { return }
                 sSelf.messages[indexPath.section].image = img
-                DispatchQueue.global(qos: .background).async {
-                  UIImage.storeImage(urlString: url.absoluteString, img: img)
-                }
+          
                 DispatchQueue.main.async{
-                  self?.messagesCollectionView.reloadSections([indexPath.section])
+                  sSelf.messagesCollectionView.reloadSections([indexPath.section])
+                }
+                DispatchQueue.global(qos: .background).async {
+                    UIImage.storeImage(urlString: url.absoluteString, img: img)
                 }
               }
             }
@@ -594,8 +595,7 @@ extension ChatViewController: MessagesLayoutDelegate {
     return 0
   }
   
-  private func preApplyPhoto(_ image: UIImage){
-    let message = Message(user: user, image: image)
+  private func preApplyPhoto(_ message: Message){
     insertLatestMessage(message)
   }
 }
@@ -695,8 +695,7 @@ extension ChatViewController: UIImagePickerControllerDelegate, UINavigationContr
   func imagePickerController(_ picker: UIImagePickerController,
                              didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
     picker.dismiss(animated: true, completion: nil)
-    
-    // 1
+  
     if let asset = info[.phAsset] as? PHAsset {
       let size = CGSize(width: 500, height: 500)
       PHImageManager.default().requestImage(
@@ -712,7 +711,6 @@ extension ChatViewController: UIImagePickerControllerDelegate, UINavigationContr
         self.sendPhoto(image)
       }
 
-    // 2
     } else if let image = info[.originalImage] as? UIImage {
       sendPhoto(image)
     }
@@ -722,3 +720,4 @@ extension ChatViewController: UIImagePickerControllerDelegate, UINavigationContr
     picker.dismiss(animated: true, completion: nil)
   }
 }
+
